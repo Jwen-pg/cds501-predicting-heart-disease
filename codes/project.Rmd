@@ -16,6 +16,7 @@ library(rattle)
 library(RColorBrewer)
 library(e1071)
 library(caret)
+library(rsample)
 ```
 
 # Setup knitr
@@ -291,7 +292,7 @@ nb_model = naiveBayes(Target ~ ., data = training_set)
 
 ```{r}
 predict <-  predict(tree_fit, testing_set, method = "class", type = "class")
-table(Actual = test$Target, Predicted = predict)
+table(Actual = testing_set$Target, Predicted = predict)
 
 tree_precision <- posPredValue(as.factor(predict), testing_set[["Target"]], positive="Positive")
 tree_recall <- sensitivity(predict, testing_set[["Target"]] , positive="Positive")
@@ -305,7 +306,7 @@ cat("Recall: ", tree_recall * 100, "%\n")
 
 ```{r}
 predicted_nb <-  predict(nb_model, testing_set, method = "class", type = "class")
-table(Actual = test$Target, Predicted = predicted_nb)
+table(Actual = testing_set$Target, Predicted = predicted_nb)
 
 nb_precision <- posPredValue(as.factor(predicted_nb), testing_set[["Target"]], positive="Positive")
 nb_recall <- sensitivity(predicted_nb, testing_set[["Target"]] , positive="Positive")
