@@ -60,8 +60,18 @@ data$age <- round(data$age / 365, digits = 0)
 # creates 'BMI' column from corresponding 'height' and 'weight'
 data$BMI <- (data$weight / ((data$height * 0.01) ^ 2))
 
+
 # changes column names to readable format
 colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
+
+# Managing Data
+
+## change blood pressure into three levels:
+
+### lower than normal:-1, normal:0, higher than normal: 1
+data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
+colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI","BloodPressure")
+
 
 head(data)
 ```
@@ -193,11 +203,35 @@ ap_lo_upper_threshold <- quantile(data$Diastole, .75) + iqr_multiplier * (quanti
 ap_lo_lower_threshold <- quantile(data$Diastole, .25) - iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
 data <- subset(data, Systole < ap_hi_upper_threshold & Systole > ap_hi_lower_threshold & Diastole < ap_lo_upper_threshold & Diastole > ap_lo_lower_threshold)
 
+# removes 'height' outliers'
+height_iqr_multiplier = 1.5
+height_upper_threshold <- quantile(data$Height, .75) + height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
+height_lower_threshold <- quantile(data$Height, .25) - height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
+data <- subset(data, Height > height_lower_threshold & Height < height_upper_threshold)
+
 # removes 'weight' outliers'
 weight_iqr_multiplier = 1.5
 weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
 weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
 data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
+
+
+# creates 'BMI' column from corresponding 'height' and 'weight'
+data$BMI <- (data$Weight / ((data$Height * 0.01) ^ 2))
+
+
+# changes column names to readable format
+#colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
+
+# Managing Data
+
+## change blood pressure into three levels:
+
+### lower than normal:-1, normal:0, higher than normal: 1
+data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
+colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI","BloodPressure")
+
+
 
 # summerizes newly encoded dataset
 summary(data)
@@ -310,18 +344,7 @@ confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="
 
 
 
-# Managing Data
 
-## change blood pressure into three levels:
-
-```{r}
-### lower than normal:-1, normal:0, higher than normal: 1
-data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
-
-
-# summerizes newly encoded dataset
-summary(data)
-```
 
 ```{r}
 tree_fit2 <- rpart(Target ~  Age + BMI + Glucose + Active + BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
