@@ -233,12 +233,7 @@ ld <- findLinearCombos(data[, numeric_features])
 ld
 ```
 
-<<<<<<< HEAD
 ## Recursive Feature Elemination
-=======
-
-# Managing Data
->>>>>>> 466c6423456868b24ca743c184ac6d4350caa419
 
 ```{r}
 # subsets data for better performance
@@ -251,19 +246,7 @@ ctrl <- rfeControl(functions = rfFuncs, method = "cv", number = 5, verbose = FAL
 
 rfProfile <- rfe(smpl_data[, which(colnames(smpl_data) != "Target")], smpl_data$Target, sizes = subsets, rfeControl = ctrl)
 
-<<<<<<< HEAD
 rfProfile
-=======
-
-## change blood pressure into three levels:
-
-###    lower than normal:-1, normal:0, higher than normal: 1
-data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
-
-
-# summerizes newly encoded dataset
-summary(data)
->>>>>>> 466c6423456868b24ca743c184ac6d4350caa419
 ```
 
 ```{r}
@@ -273,7 +256,7 @@ top_features <- c("Systole", "Cholesterol", "Age", "Diastole", "Weight")
 # Splitting Data
 
 ```{r}
-# train/calibration/test split 
+# train/test split 
 set.seed(1994)
 
 # splits into train and test data
@@ -295,6 +278,51 @@ lr <- train(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = tra
 predictions <- predict(lr, testing_set)
 confusionMatrix(as.factor(predictions), testing_set[["Target"]], positive="Positive")
 ```
+
+## Naive Bayes
+
+```{r}
+nb_model = naiveBayes(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = training_set)
+nb_predictions <- predict(nb_model, testing_set)
+confusionMatrix(as.factor(nb_predictions), testing_set[["Target"]], positive="Positive")
+```
+
+## Decision Tree
+
+```{r}
+tree_fit <- rpart(Target ~  Systole + Cholesterol + Age + Diastole + Weight, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
+fancyRpartPlot(tree_fit)
+tree_predictions <- predict(tree_fit, testing_set, type = "class")
+confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Managing Data
+
+## change blood pressure into three levels:
+
+```{r}
+### lower than normal:-1, normal:0, higher than normal: 1
+data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
+
+
+# summerizes newly encoded dataset
+summary(data)
+```
+
 ```{r}
 tree_fit2 <- rpart(Target ~  Age + BMI + Glucose + Active + BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
 fancyRpartPlot(tree_fit2)
@@ -309,18 +337,6 @@ tree_fit4 <- rpart(Target ~ Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Activ
 fancyRpartPlot(tree_fit4)
 ```
 
-
-<<<<<<< HEAD
-## Decision Tree
-
-```{r}
-tree_fit <- rpart(Target ~  Systole + Cholesterol + Age + Diastole + Weight, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit)
-tree_predictions <- predict(tree_fit, testing_set, type = "class")
-confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
-=======
-## Naive Bayes
-
 ```{r}
 #nb_model = naiveBayes(Target ~ ., data = training_set)
 nb_model = naiveBayes(Target ~ Glucose + Smoking + Active + Alcohol, data = training_set)
@@ -331,8 +347,6 @@ nb_model3 = naiveBayes(Target ~ ., data = training_set)
 
 nb_model4 = naiveBayes(Target ~Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Active+BMI+BloodPressure, data = training_set)
 ```
-
-# Model Evaluation
 
 ## Decision Tree
 
@@ -404,18 +418,8 @@ cat("Accuracy: ",tree_accuracy4 * 100, "%\n")
 cat("Precision: ", tree_precision4 * 100 , "%\n")
 cat("Recall: ", tree_recall4 * 100, "%\n")
 cat("F1: ", (2 * tree_precision4 * tree_recall4)/(tree_precision4 + tree_recall4), "\n")
-
->>>>>>> 466c6423456868b24ca743c184ac6d4350caa419
 ```
-
-## Naive Bayes
-
 ```{r}
-<<<<<<< HEAD
-nb_model = naiveBayes(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = training_set)
-nb_predictions <- predict(nb_model, testing_set)
-confusionMatrix(as.factor(nb_predictions), testing_set[["Target"]], positive="Positive")
-=======
 predicted_nb <-  predict(nb_model, testing_set, method = "class", type = "class")
 nb_prediction <- table(Actual = testing_set$Target, Predicted = predicted_nb)
 print(nb_prediction)
@@ -430,10 +434,7 @@ cat("Accuracy: ",nb_accuracy * 100, "%\n")
 cat("Precision: ", nb_precision * 100 , "%\n")
 cat("Recall: ", nb_recall * 100, "%\n")
 cat("F1: ", (2 * nb_precision * nb_recall)/(nb_precision + nb_recall), "\n")
->>>>>>> 466c6423456868b24ca743c184ac6d4350caa419
 ```
-
-
 ```{r}
 predicted_nb2 <-  predict(nb_model2, testing_set, method = "class", type = "class")
 nb_prediction2 <- table(Actual = testing_set$Target, Predicted = predicted_nb2)
@@ -450,8 +451,6 @@ cat("Precision: ", nb_precision2 * 100 , "%\n")
 cat("Recall: ", nb_recall2 * 100, "%\n")
 cat("F1: ", (2 * nb_precision2 * nb_recall2)/(nb_precision2 + nb_recall2), "\n")
 ```
-
-
 ```{r}
 predicted_nb3 <-  predict(nb_model3, testing_set, method = "class", type = "class")
 nb_prediction3 <- table(Actual = testing_set$Target, Predicted = predicted_nb3)
