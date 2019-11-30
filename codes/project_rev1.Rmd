@@ -1,0 +1,375 @@
+---
+title: "CDS505 Project"
+output: pdf_document
+---
+
+# Loading Libraries
+
+```{r}
+library(varhandle)
+library(Amelia)
+library(corrplot)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(RColorBrewer)
+library(e1071)
+library(caret)
+library(rsample)
+```
+
+# Setup knitr
+
+```{r setup, include=FALSE, echo=FALSE}
+# sets working directory to the directory of this file
+require("knitr")
+opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$path))
+```
+
+# Loading Data
+
+```{r}
+# reads dataset
+data <- read.csv2("../data/cardio.csv")
+
+# drops 'id' attribute from the dataset
+data <- subset(data, select = -c(id))
+
+# recoding categorical or ordered data into readable format
+data$cardio <- as.factor(ifelse(data$cardio == 0, "Negative", "Positive"))
+data$active <- as.factor(ifelse(data$active == 0, "Inactive", "Active"))
+data$alco <- as.factor(ifelse(data$alco == 0, "Non-alcoholic", "Alcoholic"))
+data$smoke <- as.factor(ifelse(data$smoke == 0, "Non-smoker", "Smoker"))
+data$gluc <- as.ordered(ifelse(data$gluc == 1, "Normal", ifelse(data$gluc == 2, "Above Normal", "Well Above Normal")))
+data$cholesterol <- as.ordered(ifelse(data$cholesterol == 1, "Normal", ifelse(data$cholesterol == 2, "Above Normal", "Well Above Normal")))
+data$gender <- as.factor(ifelse(data$gender == 1, "Woman", "Man"))
+
+# converts 'weight' from character to numeric
+data$weight <- unfactor(data$weight)
+
+# converts unit of 'age' from days to years
+data$age <- round(data$age / 365, digits = 0)
+
+# creates 'BMI' column from corresponding 'height' and 'weight'
+data$BMI <- (data$weight / ((data$height * 0.01) ^ 2))
+
+# changes column names to readable format
+colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
+
+head(data)
+```
+
+# Exploratory Analysis
+
+
+## Summary Statistics
+
+From the summary statistics, it is evident that the attributes 'Diastole' and 'Systole' have negative values, which are invalid. Also these two attributes, along with 'Weight' might have lots of outliers which need to be removed.
+
+```{r}
+# explores missing values
+missmap(data)
+
+# explores types of the attributes
+unlist(sapply(data, class))
+
+# summerizes dataset
+summary(data)
+```
+
+## Age Distribution
+
+```{r}
+ggplot(data) + geom_density(aes(x = Age, fill = Target), alpha=0.8) + ggtitle("Age Density Plot") + xlab("Age") + ylab("Density") + theme_bw() + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/age_dist.png", width=600, height=350)
+ggplot(data) + geom_density(aes(x = Age, fill = Target), alpha=0.8) + ggtitle("Age Density Plot") + xlab("Age") + ylab("Density") + theme_bw() + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## Height Distribution
+
+```{r}
+ggplot(data) + geom_density(aes(x = Height, fill = Target), alpha=0.8) + ggtitle("Height Density Plot") + xlab("Height") + ylab("Density") + theme_bw() + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/height_dist.png", width=600, height=350)
+ggplot(data) + geom_density(aes(x = Height, fill = Target), alpha=0.8) + ggtitle("Height Density Plot") + xlab("Height") + ylab("Density") + theme_bw() + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## Weight Distribution
+
+```{r}
+ggplot(data) + geom_density(aes(x = Weight, fill = Target), alpha=0.8) + ggtitle("Weight Density Plot") + xlab("Weight") + ylab("Density") + theme_bw() + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/weight_dist.png", width=600, height=350)
+ggplot(data) + geom_density(aes(x = Weight, fill = Target), alpha=0.8) + ggtitle("Weight Density Plot") + xlab("Weight") + ylab("Density") + theme_bw() + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## BMI Distribution
+
+```{r}
+ggplot(data) + geom_density(aes(x = BMI, fill = Target), alpha=0.8) + ggtitle("BMI Density Plot") + xlab("BMI") + ylab("Density") + theme_bw() + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/bmi_dist.png", width=600, height=350)
+ggplot(data) + geom_density(aes(x = BMI, fill = Target), alpha=0.8) + ggtitle("BMI Density Plot") + xlab("BMI") + ylab("Density") + theme_bw() + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## Class Distribution
+
+```{r}
+ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/class_dist.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## Smoking Distribution
+
+```{r}
+ggplot(data) + geom_bar(aes(x = Smoking, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Smoking Distribution") + xlab("Smoking") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/smoking_dist.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Smoking, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Smoking Distribution") + xlab("Smoking") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## Alcohol Distribution
+
+```{r}
+ggplot(data) + geom_bar(aes(x = Alcohol, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Alcohol Distribution") + xlab("Alcohol") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/alcohol_dist.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Alcohol, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Alcohol Distribution") + xlab("Alcohol") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## Physical Activity Distribution
+
+```{r}
+ggplot(data) + geom_bar(aes(x = Active, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Physical Activity Distribution") + xlab("Activity") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/activity_dist.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Active, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Physical Activity Distribution") + xlab("Activity") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## Gender Distribution
+
+```{r}
+ggplot(data) + geom_bar(aes(x = Gender, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Gender Distribution") + xlab("Gender") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/gender_dist.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Gender, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Gender Distribution") + xlab("Gender") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## Age Vs. Height Scatter Plot
+
+```{r}
+ggplot(data, aes(x= Age , y = Height, color = Target)) +  geom_point(alpha = 0.9) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("Age Vs. Height")
+
+# saves plot
+png(file="../figures/age_vs_height.png", width=600, height=350)
+ggplot(data, aes(x= Age , y = Height, color = Target)) +  geom_point(alpha = 0.9) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("Age Vs. Height")
+dev.off()
+```
+
+## Height Vs. Weight Scatter Plot
+
+```{r}
+ggplot(data, aes(x= Height , y = Weight, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("Height Vs. Weight")
+
+# saves plot
+png(file="../figures/height_vs_weight.png", width=600, height=350)
+ggplot(data, aes(x= Height , y = Weight, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("Height Vs. Weight")
+dev.off()
+```
+
+## BMI Vs. Systole Scatter Plot
+
+```{r}
+ggplot(data, aes(x= BMI , y = Systole, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("BMI Vs. Systolic Pressure")
+
+# saves plot
+png(file="../figures/bmi_vs_systole.png", width=600, height=350)
+ggplot(data, aes(x= BMI , y = Systole, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("BMI Vs. Systolic Pressure")
+dev.off()
+```
+
+## BMI Vs. Diastole Scatter Plot
+
+```{r}
+ggplot(data, aes(x= BMI , y = Diastole, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("BMI Vs. Diastolic Pressure")
+
+# saves plot
+png(file="../figures/bmi_vs_diastole.png", width=600, height=350)
+ggplot(data, aes(x= BMI , y = Diastole, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("BMI Vs. Diastolic Pressure")
+dev.off()
+```
+
+## Correlation Matrix of Numeric Attributes
+
+```{r}
+png(file="../figures/cor_numeric.png", width=600, height=350)
+cor <- cor(data[, c("Age", "Height", "Weight", "BMI", "Systole", "Diastole")])
+palette = colorRampPalette(c("skyblue", "blue", "yellow"))(20)
+heatmap(cor, col = palette, scale = "column")
+dev.off()
+
+heatmap(cor, col = palette, scale = "column")
+```
+
+# Managing Data
+
+# Reload data again
+```{r}
+# reads dataset
+data <- read.csv2("../data/cardio.csv")
+
+# drops 'id' attribute from the dataset
+data <- subset(data, select = -c(id))
+
+# converts 'weight' from character to numeric
+data$weight <- unfactor(data$weight)
+
+# converts unit of 'age' from days to years
+data$age <- round(data$age / 365, digits = 0)
+
+# creates 'BMI' column from corresponding 'height' and 'weight'
+data$BMI <- (data$weight / ((data$height * 0.01) ^ 2))
+#round BMI
+data$BMI <- round(data$BMI, digits = 1)
+
+# changes column names to readable format
+colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
+head(data)
+```
+
+```{r}
+# removes observation for which 'Systole' or 'Diastole' has negative values
+data <- subset(data, Systole > 0 & Diastole > 0)
+
+# removes 'ap_hi' and 'ap_lo' outliers
+iqr_multiplier = 3
+ap_hi_upper_threshold <- quantile(data$Systole, .75) + iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
+ap_hi_lower_threshold <- quantile(data$Systole, .25) - iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
+ap_lo_upper_threshold <- quantile(data$Diastole, .75) + iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
+ap_lo_lower_threshold <- quantile(data$Diastole, .25) - iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
+data <- subset(data, Systole < ap_hi_upper_threshold & Systole > ap_hi_lower_threshold & Diastole < ap_lo_upper_threshold & Diastole > ap_lo_lower_threshold)
+
+# removes 'weight' outliers
+weight_iqr_multiplier = 1.5
+weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
+weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
+data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
+
+## change blood pressure into three levels:
+###    lower than normal:-1, normal:0, higher than normal: 1
+data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
+
+
+# summerizes newly encoded dataset
+summary(data)
+```
+
+# Feature selection
+## multiple linear regression on factors of target
+```{r}
+library(dplyr)
+sample1= sample_n(data,1000)
+mlr =lm(data = sample1,Target~Age+Gender+BMI+Cholesterol+Glucose+Smoking+Alcohol+Active+BloodPressure)
+summary(mlr)
+```
+
+## factor selection according to parsimony principle
+```{r}
+###find collinearity among factors
+library(GGally)
+ggpairs(data = sample1,c(1:2,7:11,13,14))
+```
+abvious collinearity: glucose~cholesterol (0.518), Smoking~Gender(0.32), Alcohol~Gender(0.206), Alcohol~Smoking(0.346) , BloodPressure~BMI (0.215)
+
+### also remove the following factors one by one whose t value is lower than 1.5 (and even the absolute values of standard errors are all larger than Estimate!) and thus significance is really low:
+### alcohol, smoking, gender
+```{r}
+
+mlr2 =lm(data = sample1,Target~Age+BMI+Cholesterol+Glucose+Active+BloodPressure)
+summary(mlr2)
+```
+
+## After trying removing collineared factors BloodPressure or BMI which resulted in less adjusted R-squared, we could tentatively conlude that the following factors remain influencial:
+
+## Age + BMI + Glucose + Active + BloodPressure
+
+# Modeling Data
+
+## Splitting Data
+
+```{r}
+# train/test split 
+set.seed(1994)
+split <- initial_split(data, prop=0.75, strata = "Target")
+training_set <- training(split)
+testing_set <- testing(split)
+
+# checks class distribution after the split
+prop.table(table(training_set$Target)) * 100
+prop.table(table(testing_set$Target)) * 100
+```
+
+## Decision Tree
+
+```{r}
+tree_fit <- rpart(Target ~  Glucose + Smoking + Active + Alcohol, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
+fancyRpartPlot(tree_fit)
+```
+
+## Naive Bayes
+
+```{r}
+nb_model = naiveBayes(Target ~ ., data = training_set)
+```
+
+# Model Evaluation
+
+## Decision Tree
+
+```{r}
+predict <-  predict(tree_fit, testing_set, method = "class", type = "class")
+table(Actual = testing_set$Target, Predicted = predict)
+
+tree_precision <- posPredValue(as.factor(predict), testing_set[["Target"]], positive="Positive")
+tree_recall <- sensitivity(predict, testing_set[["Target"]] , positive="Positive")
+
+cat("\n")
+cat("Precision: ", tree_precision * 100 , "%\n")
+cat("Recall: ", tree_recall * 100, "%\n")
+```
+
+## Naive Bayes
+
+```{r}
+predicted_nb <-  predict(nb_model, testing_set, method = "class", type = "class")
+table(Actual = testing_set$Target, Predicted = predicted_nb)
+
+nb_precision <- posPredValue(as.factor(predicted_nb), testing_set[["Target"]], positive="Positive")
+nb_recall <- sensitivity(predicted_nb, testing_set[["Target"]] , positive="Positive")
+
+cat("\n")
+cat("Precision: ", nb_precision * 100 , "%\n")
+cat("Recall: ", nb_recall * 100, "%\n")
+```

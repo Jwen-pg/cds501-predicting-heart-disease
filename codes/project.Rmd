@@ -233,7 +233,12 @@ ld <- findLinearCombos(data[, numeric_features])
 ld
 ```
 
+<<<<<<< HEAD
 ## Recursive Feature Elemination
+=======
+
+# Managing Data
+>>>>>>> 466c6423456868b24ca743c184ac6d4350caa419
 
 ```{r}
 # subsets data for better performance
@@ -246,7 +251,19 @@ ctrl <- rfeControl(functions = rfFuncs, method = "cv", number = 5, verbose = FAL
 
 rfProfile <- rfe(smpl_data[, which(colnames(smpl_data) != "Target")], smpl_data$Target, sizes = subsets, rfeControl = ctrl)
 
+<<<<<<< HEAD
 rfProfile
+=======
+
+## change blood pressure into three levels:
+
+###    lower than normal:-1, normal:0, higher than normal: 1
+data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
+
+
+# summerizes newly encoded dataset
+summary(data)
+>>>>>>> 466c6423456868b24ca743c184ac6d4350caa419
 ```
 
 ```{r}
@@ -278,7 +295,22 @@ lr <- train(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = tra
 predictions <- predict(lr, testing_set)
 confusionMatrix(as.factor(predictions), testing_set[["Target"]], positive="Positive")
 ```
+```{r}
+tree_fit2 <- rpart(Target ~  Age + BMI + Glucose + Active + BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
+fancyRpartPlot(tree_fit2)
+```
+```{r}
+tree_fit3 <- rpart(Target ~ ., data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
+fancyRpartPlot(tree_fit3)
+```
 
+```{r}
+tree_fit4 <- rpart(Target ~ Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Active+BMI+BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
+fancyRpartPlot(tree_fit4)
+```
+
+
+<<<<<<< HEAD
 ## Decision Tree
 
 ```{r}
@@ -286,12 +318,176 @@ tree_fit <- rpart(Target ~  Systole + Cholesterol + Age + Diastole + Weight, dat
 fancyRpartPlot(tree_fit)
 tree_predictions <- predict(tree_fit, testing_set, type = "class")
 confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
+=======
+## Naive Bayes
+
+```{r}
+#nb_model = naiveBayes(Target ~ ., data = training_set)
+nb_model = naiveBayes(Target ~ Glucose + Smoking + Active + Alcohol, data = training_set)
+
+nb_model2 = naiveBayes(Target ~ Age + BMI + Glucose + Active + BloodPressure, data = training_set)
+
+nb_model3 = naiveBayes(Target ~ ., data = training_set)
+
+nb_model4 = naiveBayes(Target ~Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Active+BMI+BloodPressure, data = training_set)
+```
+
+# Model Evaluation
+
+## Decision Tree
+
+```{r}
+predict <-  predict(tree_fit, testing_set, method = "class", type = "class")
+dt_prediction <- table(Actual = testing_set$Target, Predicted = predict)
+print(dt_prediction)
+
+tree_precision <- posPredValue(as.factor(predict), testing_set[["Target"]], positive="Positive")
+tree_recall <- sensitivity(predict, testing_set[["Target"]] , positive="Positive")
+tree_accuracy <- sum(diag(dt_prediction))/sum(dt_prediction)
+
+cat("\n")
+cat("Decision Tree \n")
+cat("Accuracy: ",tree_accuracy * 100, "%\n")
+cat("Precision: ", tree_precision * 100 , "%\n")
+cat("Recall: ", tree_recall * 100, "%\n")
+cat("F1: ", (2 * tree_precision * tree_recall)/(tree_precision + tree_recall), "\n")
+```
+
+```{r}
+predict2 <-  predict(tree_fit2, testing_set, method = "class", type = "class")
+dt_prediction2 <- table(Actual = testing_set$Target, Predicted = predict2)
+print(dt_prediction2)
+
+tree_precision2 <- posPredValue(as.factor(predict2), testing_set[["Target"]], positive="Positive")
+tree_recall2 <- sensitivity(predict2, testing_set[["Target"]] , positive="Positive")
+tree_accuracy2 <- sum(diag(dt_prediction2))/sum(dt_prediction2)
+
+cat("\n")
+cat("Decision Tree\n")
+cat("Accuracy: ",tree_accuracy2 * 100, "%\n")
+cat("Precision: ", tree_precision2 * 100 , "%\n")
+cat("Recall: ", tree_recall2 * 100, "%\n")
+cat("F1: ", (2 * tree_precision2 * tree_recall2)/(tree_precision2 + tree_recall2), "\n")
+
+```
+
+```{r}
+predict3 <-  predict(tree_fit3, testing_set, method = "class", type = "class")
+dt_prediction3 <- table(Actual = testing_set$Target, Predicted = predict3)
+print(dt_prediction3)
+
+tree_precision3 <- posPredValue(as.factor(predict3), testing_set[["Target"]], positive="Positive")
+tree_recall3 <- sensitivity(predict3, testing_set[["Target"]] , positive="Positive")
+tree_accuracy3 <- sum(diag(dt_prediction3))/sum(dt_prediction3)
+
+cat("\n")
+cat("Decision Tree\n")
+cat("Accuracy: ",tree_accuracy3 * 100, "%\n")
+cat("Precision: ", tree_precision3 * 100 , "%\n")
+cat("Recall: ", tree_recall3 * 100, "%\n")
+cat("F1: ", (2 * tree_precision3 * tree_recall3)/(tree_precision3 + tree_recall3), "\n")
+
+```
+
+```{r}
+predict4 <-  predict(tree_fit4, testing_set, method = "class", type = "class")
+dt_prediction4 <- table(Actual = testing_set$Target, Predicted = predict4)
+print(dt_prediction4)
+
+tree_precision4 <- posPredValue(as.factor(predict4), testing_set[["Target"]], positive="Positive")
+tree_recall4 <- sensitivity(predict4, testing_set[["Target"]] , positive="Positive")
+tree_accuracy4 <- sum(diag(dt_prediction4))/sum(dt_prediction4)
+
+cat("\n")
+cat("Decision Tree\n")
+cat("Accuracy: ",tree_accuracy4 * 100, "%\n")
+cat("Precision: ", tree_precision4 * 100 , "%\n")
+cat("Recall: ", tree_recall4 * 100, "%\n")
+cat("F1: ", (2 * tree_precision4 * tree_recall4)/(tree_precision4 + tree_recall4), "\n")
+
+>>>>>>> 466c6423456868b24ca743c184ac6d4350caa419
 ```
 
 ## Naive Bayes
 
 ```{r}
+<<<<<<< HEAD
 nb_model = naiveBayes(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = training_set)
 nb_predictions <- predict(nb_model, testing_set)
 confusionMatrix(as.factor(nb_predictions), testing_set[["Target"]], positive="Positive")
+=======
+predicted_nb <-  predict(nb_model, testing_set, method = "class", type = "class")
+nb_prediction <- table(Actual = testing_set$Target, Predicted = predicted_nb)
+print(nb_prediction)
+
+nb_precision <- posPredValue(as.factor(predicted_nb), testing_set[["Target"]], positive="Positive")
+nb_recall <- sensitivity(predicted_nb, testing_set[["Target"]] , positive="Positive")
+nb_accuracy <- sum(diag(nb_prediction))/sum(nb_prediction)
+  
+cat("\n")
+cat("Naive Bayes\n")
+cat("Accuracy: ",nb_accuracy * 100, "%\n")
+cat("Precision: ", nb_precision * 100 , "%\n")
+cat("Recall: ", nb_recall * 100, "%\n")
+cat("F1: ", (2 * nb_precision * nb_recall)/(nb_precision + nb_recall), "\n")
+>>>>>>> 466c6423456868b24ca743c184ac6d4350caa419
 ```
+
+
+```{r}
+predicted_nb2 <-  predict(nb_model2, testing_set, method = "class", type = "class")
+nb_prediction2 <- table(Actual = testing_set$Target, Predicted = predicted_nb2)
+print(nb_prediction2)
+
+nb_precision2 <- posPredValue(as.factor(predicted_nb2), testing_set[["Target"]], positive="Positive")
+nb_recall2 <- sensitivity(predicted_nb2, testing_set[["Target"]] , positive="Positive")
+nb_accuracy2 <- sum(diag(nb_prediction2))/sum(nb_prediction2)
+  
+cat("\n")
+cat("Naive Bayes\n")
+cat("Accuracy: ",nb_accuracy2 * 100, "%\n")
+cat("Precision: ", nb_precision2 * 100 , "%\n")
+cat("Recall: ", nb_recall2 * 100, "%\n")
+cat("F1: ", (2 * nb_precision2 * nb_recall2)/(nb_precision2 + nb_recall2), "\n")
+```
+
+
+```{r}
+predicted_nb3 <-  predict(nb_model3, testing_set, method = "class", type = "class")
+nb_prediction3 <- table(Actual = testing_set$Target, Predicted = predicted_nb3)
+print(nb_prediction3)
+
+nb_precision3 <- posPredValue(as.factor(predicted_nb3), testing_set[["Target"]], positive="Positive")
+nb_recall3 <- sensitivity(predicted_nb3, testing_set[["Target"]] , positive="Positive")
+nb_accuracy3 <- sum(diag(nb_prediction3))/sum(nb_prediction3)
+  
+cat("\n")
+cat("Naive Bayes\n")
+cat("Accuracy: ",nb_accuracy3 * 100, "%\n")
+cat("Precision: ", nb_precision3 * 100 , "%\n")
+cat("Recall: ", nb_recall3 * 100, "%\n")
+cat("F1: ", (2 * nb_precision3 * nb_recall3)/(nb_precision3 + nb_recall3), "\n")
+```
+
+```{r}
+predicted_nb4 <-  predict(nb_model4, testing_set, method = "class", type = "class")
+nb_prediction4 <- table(Actual = testing_set$Target, Predicted = predicted_nb4)
+print(nb_prediction4)
+
+nb_precision4 <- posPredValue(as.factor(predicted_nb4), testing_set[["Target"]], positive="Positive")
+nb_recall4 <- sensitivity(predicted_nb4, testing_set[["Target"]] , positive="Positive")
+nb_accuracy4 <- sum(diag(nb_prediction4))/sum(nb_prediction4)
+  
+cat("\n")
+cat("Naive Bayes\n")
+cat("Accuracy: ",nb_accuracy4 * 100, "%\n")
+cat("Precision: ", nb_precision4 * 100 , "%\n")
+cat("Recall: ", nb_recall4 * 100, "%\n")
+cat("F1: ", (2 * nb_precision4 * nb_recall4)/(nb_precision4 + nb_recall4), "\n")
+```
+
+
+
+
+
+
