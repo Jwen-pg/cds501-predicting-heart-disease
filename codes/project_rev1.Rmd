@@ -233,8 +233,31 @@ dev.off()
 heatmap(cor, col = palette, scale = "column")
 ```
 
-
 # Managing Data
+
+# Reload data again
+```{r}
+# reads dataset
+data <- read.csv2("../data/cardio.csv")
+
+# drops 'id' attribute from the dataset
+data <- subset(data, select = -c(id))
+
+# converts 'weight' from character to numeric
+data$weight <- unfactor(data$weight)
+
+# converts unit of 'age' from days to years
+data$age <- round(data$age / 365, digits = 0)
+
+# creates 'BMI' column from corresponding 'height' and 'weight'
+data$BMI <- (data$weight / ((data$height * 0.01) ^ 2))
+#round BMI
+data$BMI <- round(data$BMI, digits = 1)
+
+# changes column names to readable format
+colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
+head(data)
+```
 
 ```{r}
 # removes observation for which 'Systole' or 'Diastole' has negative values
@@ -254,9 +277,7 @@ weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (
 weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
 data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
 
-
 ## change blood pressure into three levels:
-
 ###    lower than normal:-1, normal:0, higher than normal: 1
 data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
 
@@ -264,6 +285,35 @@ data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((dat
 # summerizes newly encoded dataset
 summary(data)
 ```
+
+# Feature selection
+## multiple linear regression on factors of target
+```{r}
+library(dplyr)
+sample1= sample_n(data,1000)
+mlr =lm(data = sample1,Target~Age+Gender+BMI+Cholesterol+Glucose+Smoking+Alcohol+Active+BloodPressure)
+summary(mlr)
+```
+
+## factor selection according to parsimony principle
+```{r}
+###find collinearity among factors
+library(GGally)
+ggpairs(data = sample1,c(1:2,7:11,13,14))
+```
+abvious collinearity: glucose~cholesterol (0.518), Smoking~Gender(0.32), Alcohol~Gender(0.206), Alcohol~Smoking(0.346) , BloodPressure~BMI (0.215)
+
+### also remove the following factors one by one whose t value is lower than 1.5 (and even the absolute values of standard errors are all larger than Estimate!) and thus significance is really low:
+### alcohol, smoking, gender
+```{r}
+
+mlr2 =lm(data = sample1,Target~Age+BMI+Cholesterol+Glucose+Active+BloodPressure)
+summary(mlr2)
+```
+
+## After trying removing collineared factors BloodPressure or BMI which resulted in less adjusted R-squared, we could tentatively conlude that the following factors remain influencial:
+
+## Age + BMI + Glucose + Active + BloodPressure
 
 # Modeling Data
 
@@ -287,32 +337,11 @@ prop.table(table(testing_set$Target)) * 100
 tree_fit <- rpart(Target ~  Glucose + Smoking + Active + Alcohol, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
 fancyRpartPlot(tree_fit)
 ```
-```{r}
-tree_fit2 <- rpart(Target ~  Age + BMI + Glucose + Active + BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit2)
-```
-```{r}
-tree_fit3 <- rpart(Target ~ ., data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit3)
-```
-
-```{r}
-tree_fit4 <- rpart(Target ~ Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Active+BMI+BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit4)
-```
-
 
 ## Naive Bayes
 
 ```{r}
-#nb_model = naiveBayes(Target ~ ., data = training_set)
-nb_model = naiveBayes(Target ~ Glucose + Smoking + Active + Alcohol, data = training_set)
-
-nb_model2 = naiveBayes(Target ~ Age + BMI + Glucose + Active + BloodPressure, data = training_set)
-
-nb_model3 = naiveBayes(Target ~ ., data = training_set)
-
-nb_model4 = naiveBayes(Target ~Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Active+BMI+BloodPressure, data = training_set)
+nb_model = naiveBayes(Target ~ ., data = training_set)
 ```
 
 # Model Evaluation
@@ -321,149 +350,26 @@ nb_model4 = naiveBayes(Target ~Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Ac
 
 ```{r}
 predict <-  predict(tree_fit, testing_set, method = "class", type = "class")
-dt_prediction <- table(Actual = testing_set$Target, Predicted = predict)
-print(dt_prediction)
+table(Actual = testing_set$Target, Predicted = predict)
 
 tree_precision <- posPredValue(as.factor(predict), testing_set[["Target"]], positive="Positive")
 tree_recall <- sensitivity(predict, testing_set[["Target"]] , positive="Positive")
-tree_accuracy <- sum(diag(dt_prediction))/sum(dt_prediction)
 
 cat("\n")
-cat("Decision Tree \n")
-cat("Accuracy: ",tree_accuracy * 100, "%\n")
 cat("Precision: ", tree_precision * 100 , "%\n")
 cat("Recall: ", tree_recall * 100, "%\n")
-cat("F1: ", (2 * tree_precision * tree_recall)/(tree_precision + tree_recall), "\n")
-```
-
-```{r}
-predict2 <-  predict(tree_fit2, testing_set, method = "class", type = "class")
-dt_prediction2 <- table(Actual = testing_set$Target, Predicted = predict2)
-print(dt_prediction2)
-
-tree_precision2 <- posPredValue(as.factor(predict2), testing_set[["Target"]], positive="Positive")
-tree_recall2 <- sensitivity(predict2, testing_set[["Target"]] , positive="Positive")
-tree_accuracy2 <- sum(diag(dt_prediction2))/sum(dt_prediction2)
-
-cat("\n")
-cat("Decision Tree\n")
-cat("Accuracy: ",tree_accuracy2 * 100, "%\n")
-cat("Precision: ", tree_precision2 * 100 , "%\n")
-cat("Recall: ", tree_recall2 * 100, "%\n")
-cat("F1: ", (2 * tree_precision2 * tree_recall2)/(tree_precision2 + tree_recall2), "\n")
-
-```
-
-```{r}
-predict3 <-  predict(tree_fit3, testing_set, method = "class", type = "class")
-dt_prediction3 <- table(Actual = testing_set$Target, Predicted = predict3)
-print(dt_prediction3)
-
-tree_precision3 <- posPredValue(as.factor(predict3), testing_set[["Target"]], positive="Positive")
-tree_recall3 <- sensitivity(predict3, testing_set[["Target"]] , positive="Positive")
-tree_accuracy3 <- sum(diag(dt_prediction3))/sum(dt_prediction3)
-
-cat("\n")
-cat("Decision Tree\n")
-cat("Accuracy: ",tree_accuracy3 * 100, "%\n")
-cat("Precision: ", tree_precision3 * 100 , "%\n")
-cat("Recall: ", tree_recall3 * 100, "%\n")
-cat("F1: ", (2 * tree_precision3 * tree_recall3)/(tree_precision3 + tree_recall3), "\n")
-
-```
-
-```{r}
-predict4 <-  predict(tree_fit4, testing_set, method = "class", type = "class")
-dt_prediction4 <- table(Actual = testing_set$Target, Predicted = predict4)
-print(dt_prediction4)
-
-tree_precision4 <- posPredValue(as.factor(predict4), testing_set[["Target"]], positive="Positive")
-tree_recall4 <- sensitivity(predict4, testing_set[["Target"]] , positive="Positive")
-tree_accuracy4 <- sum(diag(dt_prediction4))/sum(dt_prediction4)
-
-cat("\n")
-cat("Decision Tree\n")
-cat("Accuracy: ",tree_accuracy4 * 100, "%\n")
-cat("Precision: ", tree_precision4 * 100 , "%\n")
-cat("Recall: ", tree_recall4 * 100, "%\n")
-cat("F1: ", (2 * tree_precision4 * tree_recall4)/(tree_precision4 + tree_recall4), "\n")
-
 ```
 
 ## Naive Bayes
 
 ```{r}
 predicted_nb <-  predict(nb_model, testing_set, method = "class", type = "class")
-nb_prediction <- table(Actual = testing_set$Target, Predicted = predicted_nb)
-print(nb_prediction)
+table(Actual = testing_set$Target, Predicted = predicted_nb)
 
 nb_precision <- posPredValue(as.factor(predicted_nb), testing_set[["Target"]], positive="Positive")
 nb_recall <- sensitivity(predicted_nb, testing_set[["Target"]] , positive="Positive")
-nb_accuracy <- sum(diag(nb_prediction))/sum(nb_prediction)
-  
+
 cat("\n")
-cat("Naive Bayes\n")
-cat("Accuracy: ",nb_accuracy * 100, "%\n")
 cat("Precision: ", nb_precision * 100 , "%\n")
 cat("Recall: ", nb_recall * 100, "%\n")
-cat("F1: ", (2 * nb_precision * nb_recall)/(nb_precision + nb_recall), "\n")
 ```
-
-
-```{r}
-predicted_nb2 <-  predict(nb_model2, testing_set, method = "class", type = "class")
-nb_prediction2 <- table(Actual = testing_set$Target, Predicted = predicted_nb2)
-print(nb_prediction2)
-
-nb_precision2 <- posPredValue(as.factor(predicted_nb2), testing_set[["Target"]], positive="Positive")
-nb_recall2 <- sensitivity(predicted_nb2, testing_set[["Target"]] , positive="Positive")
-nb_accuracy2 <- sum(diag(nb_prediction2))/sum(nb_prediction2)
-  
-cat("\n")
-cat("Naive Bayes\n")
-cat("Accuracy: ",nb_accuracy2 * 100, "%\n")
-cat("Precision: ", nb_precision2 * 100 , "%\n")
-cat("Recall: ", nb_recall2 * 100, "%\n")
-cat("F1: ", (2 * nb_precision2 * nb_recall2)/(nb_precision2 + nb_recall2), "\n")
-```
-
-
-```{r}
-predicted_nb3 <-  predict(nb_model3, testing_set, method = "class", type = "class")
-nb_prediction3 <- table(Actual = testing_set$Target, Predicted = predicted_nb3)
-print(nb_prediction3)
-
-nb_precision3 <- posPredValue(as.factor(predicted_nb3), testing_set[["Target"]], positive="Positive")
-nb_recall3 <- sensitivity(predicted_nb3, testing_set[["Target"]] , positive="Positive")
-nb_accuracy3 <- sum(diag(nb_prediction3))/sum(nb_prediction3)
-  
-cat("\n")
-cat("Naive Bayes\n")
-cat("Accuracy: ",nb_accuracy3 * 100, "%\n")
-cat("Precision: ", nb_precision3 * 100 , "%\n")
-cat("Recall: ", nb_recall3 * 100, "%\n")
-cat("F1: ", (2 * nb_precision3 * nb_recall3)/(nb_precision3 + nb_recall3), "\n")
-```
-
-```{r}
-predicted_nb4 <-  predict(nb_model4, testing_set, method = "class", type = "class")
-nb_prediction4 <- table(Actual = testing_set$Target, Predicted = predicted_nb4)
-print(nb_prediction4)
-
-nb_precision4 <- posPredValue(as.factor(predicted_nb4), testing_set[["Target"]], positive="Positive")
-nb_recall4 <- sensitivity(predicted_nb4, testing_set[["Target"]] , positive="Positive")
-nb_accuracy4 <- sum(diag(nb_prediction4))/sum(nb_prediction4)
-  
-cat("\n")
-cat("Naive Bayes\n")
-cat("Accuracy: ",nb_accuracy4 * 100, "%\n")
-cat("Precision: ", nb_precision4 * 100 , "%\n")
-cat("Recall: ", nb_recall4 * 100, "%\n")
-cat("F1: ", (2 * nb_precision4 * nb_recall4)/(nb_precision4 + nb_recall4), "\n")
-```
-
-
-
-
-
-
