@@ -6,33 +6,39 @@ output: pdf_document
 # Loading Libraries
 
 ```{r}
-library(varhandle)
-library(Amelia)
+library(caret)
 library(corrplot)
+library(e1071)
 library(ggplot2)
-library(rpart)
-library(rpart.plot)
+library(knitr)
+library(randomForest)
 library(rattle)
 library(RColorBrewer)
-library(e1071)
-library(caret)
+library(rpart)
+library(rpart.plot)
 library(rsample)
+library(varhandle)
 ```
 
 # Setup knitr
 
 ```{r setup, include=FALSE, echo=FALSE}
-# sets working directory to the directory of this file
-require("knitr")
+# sets knitr working directory to the directory of this file
 opts_knit$set(root.dir = dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
 # Loading Data
 
 ```{r}
+# sets wroking directory to file's directory
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 # reads dataset
 data <- read.csv2("../data/cardio.csv")
+```
 
+# Preprocessing
+
+```{r}
 # drops 'id' attribute from the dataset
 data <- subset(data, select = -c(id))
 
@@ -62,15 +68,11 @@ head(data)
 
 # Exploratory Analysis
 
-
 ## Summary Statistics
 
 From the summary statistics, it is evident that the attributes 'Diastole' and 'Systole' have negative values, which are invalid. Also these two attributes, along with 'Weight' might have lots of outliers which need to be removed.
 
 ```{r}
-# explores missing values
-missmap(data)
-
 # explores types of the attributes
 unlist(sapply(data, class))
 
@@ -177,63 +179,6 @@ ggplot(data) + geom_bar(aes(x = Gender, fill = Target), position = 'dodge', alph
 dev.off()
 ```
 
-## Age Vs. Height Scatter Plot
-
-```{r}
-ggplot(data, aes(x= Age , y = Height, color = Target)) +  geom_point(alpha = 0.9) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("Age Vs. Height")
-
-# saves plot
-png(file="../figures/age_vs_height.png", width=600, height=350)
-ggplot(data, aes(x= Age , y = Height, color = Target)) +  geom_point(alpha = 0.9) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("Age Vs. Height")
-dev.off()
-```
-
-## Height Vs. Weight Scatter Plot
-
-```{r}
-ggplot(data, aes(x= Height , y = Weight, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("Height Vs. Weight")
-
-# saves plot
-png(file="../figures/height_vs_weight.png", width=600, height=350)
-ggplot(data, aes(x= Height , y = Weight, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("Height Vs. Weight")
-dev.off()
-```
-
-## BMI Vs. Systole Scatter Plot
-
-```{r}
-ggplot(data, aes(x= BMI , y = Systole, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("BMI Vs. Systolic Pressure")
-
-# saves plot
-png(file="../figures/bmi_vs_systole.png", width=600, height=350)
-ggplot(data, aes(x= BMI , y = Systole, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("BMI Vs. Systolic Pressure")
-dev.off()
-```
-
-## BMI Vs. Diastole Scatter Plot
-
-```{r}
-ggplot(data, aes(x= BMI , y = Diastole, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("BMI Vs. Diastolic Pressure")
-
-# saves plot
-png(file="../figures/bmi_vs_diastole.png", width=600, height=350)
-ggplot(data, aes(x= BMI , y = Diastole, color = Target)) +  geom_point(alpha = 0.8) + scale_color_manual(values=c("#15158a", "#eb4034")) + stat_smooth() + ggtitle("BMI Vs. Diastolic Pressure")
-dev.off()
-```
-
-## Correlation Matrix of Numeric Attributes
-
-```{r}
-png(file="../figures/cor_numeric.png", width=600, height=350)
-cor <- cor(data[, c("Age", "Height", "Weight", "BMI", "Systole", "Diastole")])
-palette = colorRampPalette(c("skyblue", "blue", "yellow"))(20)
-heatmap(cor, col = palette, scale = "column")
-dev.off()
-
-heatmap(cor, col = palette, scale = "column")
-```
-
-
 # Managing Data
 
 ```{r}
@@ -248,16 +193,129 @@ ap_lo_upper_threshold <- quantile(data$Diastole, .75) + iqr_multiplier * (quanti
 ap_lo_lower_threshold <- quantile(data$Diastole, .25) - iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
 data <- subset(data, Systole < ap_hi_upper_threshold & Systole > ap_hi_lower_threshold & Diastole < ap_lo_upper_threshold & Diastole > ap_lo_lower_threshold)
 
-# removes 'weight' outliers
+# removes 'weight' outliers'
 weight_iqr_multiplier = 1.5
 weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
 weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
 data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
 
+# summerizes newly encoded dataset
+summary(data)
+```
+
+# Feature Selection
+
+## Checking Near Zero Variance Attributes
+Sometimes features may only have a single unique value. For many models, this may cause the model to crash or the fit to be unstable. Similarly, features may have only a few unique values that occur with very low frequencies. The concern here that these predictors may become zero-variance predictors when the data are split into cross-validation/bootstrap sub-samples or that a few samples may have an undue influence on the model. These “near-zero-variance” predictors may need to be identified and eliminated prior to modeling. However, no features had near zero variance.
+
+```{r}
+nzv <- nearZeroVar(data, saveMetrics= TRUE)
+nzv
+```
+
+## Checking Strongly Correlated Features
+Some models might show imporoved performance if the level of correlation between the predictors is reduced. However, no features were strongly correlated.
+
+```{r}
+numeric_features <- c("Age", "Height", "Weight", "Systole", "Diastole", "BMI")
+# creates a correlation matrix
+cr <- cor(data[, numeric_features])
+# finds the number of strongly correlated features
+sr <- findCorrelation(cr, cutoff = 0.75)
+sr
+```
+
+## Checking Linearly Dependent Features
+No features were found to be linearly dependent among each other.
+
+```{r}
+ld <- findLinearCombos(data[, numeric_features])
+ld
+```
+
+## Recursive Feature Elemination
+
+```{r}
+# subsets data for better performance
+set.seed(19941021)
+smpl_split <- initial_split(data, prop = 0.15, strata = "Target")
+smpl_data <- training(smpl_split)
+
+subsets <- c(5)
+ctrl <- rfeControl(functions = rfFuncs, method = "cv", number = 5, verbose = FALSE)
+
+rfProfile <- rfe(smpl_data[, which(colnames(smpl_data) != "Target")], smpl_data$Target, sizes = subsets, rfeControl = ctrl)
+
+rfProfile
+```
+
+```{r}
+top_features <- c("Systole", "Cholesterol", "Age", "Diastole", "Weight")
+```
+
+# Splitting Data
+
+```{r}
+# train/test split 
+set.seed(1994)
+
+# splits into train and test data
+split <- initial_split(data, prop = 0.80, strata = "Target")
+training_set <- training(split)
+testing_set <- testing(split)
+
+# checks class distribution after the split
+cat("Training Set:")
+prop.table(table(training_set$Target)) * 100
+cat("Testing Set:")
+prop.table(table(testing_set$Target)) * 100
+```
+
+## Logistic Regression
+
+```{r}
+lr <- train(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = training_set, method = "LogitBoost", family = "binomial")
+predictions <- predict(lr, testing_set)
+confusionMatrix(as.factor(predictions), testing_set[["Target"]], positive="Positive")
+```
+
+## Naive Bayes
+
+```{r}
+nb_model = naiveBayes(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = training_set)
+nb_predictions <- predict(nb_model, testing_set)
+confusionMatrix(as.factor(nb_predictions), testing_set[["Target"]], positive="Positive")
+```
+
+## Decision Tree
+
+```{r}
+tree_fit <- rpart(Target ~  Systole + Cholesterol + Age + Diastole + Weight, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
+fancyRpartPlot(tree_fit)
+tree_predictions <- predict(tree_fit, testing_set, type = "class")
+confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Managing Data
 
 ## change blood pressure into three levels:
 
-###    lower than normal:-1, normal:0, higher than normal: 1
+```{r}
+### lower than normal:-1, normal:0, higher than normal: 1
 data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
 
 
@@ -265,28 +323,6 @@ data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((dat
 summary(data)
 ```
 
-# Modeling Data
-
-## Splitting Data
-
-```{r}
-# train/test split 
-set.seed(1994)
-split <- initial_split(data, prop=0.75, strata = "Target")
-training_set <- training(split)
-testing_set <- testing(split)
-
-# checks class distribution after the split
-prop.table(table(training_set$Target)) * 100
-prop.table(table(testing_set$Target)) * 100
-```
-
-## Decision Tree
-
-```{r}
-tree_fit <- rpart(Target ~  Glucose + Smoking + Active + Alcohol, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit)
-```
 ```{r}
 tree_fit2 <- rpart(Target ~  Age + BMI + Glucose + Active + BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
 fancyRpartPlot(tree_fit2)
@@ -301,9 +337,6 @@ tree_fit4 <- rpart(Target ~ Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Activ
 fancyRpartPlot(tree_fit4)
 ```
 
-
-## Naive Bayes
-
 ```{r}
 #nb_model = naiveBayes(Target ~ ., data = training_set)
 nb_model = naiveBayes(Target ~ Glucose + Smoking + Active + Alcohol, data = training_set)
@@ -314,8 +347,6 @@ nb_model3 = naiveBayes(Target ~ ., data = training_set)
 
 nb_model4 = naiveBayes(Target ~Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Active+BMI+BloodPressure, data = training_set)
 ```
-
-# Model Evaluation
 
 ## Decision Tree
 
@@ -387,11 +418,7 @@ cat("Accuracy: ",tree_accuracy4 * 100, "%\n")
 cat("Precision: ", tree_precision4 * 100 , "%\n")
 cat("Recall: ", tree_recall4 * 100, "%\n")
 cat("F1: ", (2 * tree_precision4 * tree_recall4)/(tree_precision4 + tree_recall4), "\n")
-
 ```
-
-## Naive Bayes
-
 ```{r}
 predicted_nb <-  predict(nb_model, testing_set, method = "class", type = "class")
 nb_prediction <- table(Actual = testing_set$Target, Predicted = predicted_nb)
@@ -408,8 +435,6 @@ cat("Precision: ", nb_precision * 100 , "%\n")
 cat("Recall: ", nb_recall * 100, "%\n")
 cat("F1: ", (2 * nb_precision * nb_recall)/(nb_precision + nb_recall), "\n")
 ```
-
-
 ```{r}
 predicted_nb2 <-  predict(nb_model2, testing_set, method = "class", type = "class")
 nb_prediction2 <- table(Actual = testing_set$Target, Predicted = predicted_nb2)
@@ -426,8 +451,6 @@ cat("Precision: ", nb_precision2 * 100 , "%\n")
 cat("Recall: ", nb_recall2 * 100, "%\n")
 cat("F1: ", (2 * nb_precision2 * nb_recall2)/(nb_precision2 + nb_recall2), "\n")
 ```
-
-
 ```{r}
 predicted_nb3 <-  predict(nb_model3, testing_set, method = "class", type = "class")
 nb_prediction3 <- table(Actual = testing_set$Target, Predicted = predicted_nb3)
