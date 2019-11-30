@@ -1,0 +1,105 @@
+---
+title: "trail_mlr"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+# Loading Libraries
+
+```{r}
+library(varhandle)
+
+```
+
+# Loading Data
+
+```{r}
+# reads dataset
+data <- read.csv2("../data/cardio.csv")
+
+# drops 'id' attribute from the dataset
+data <- subset(data, select = -c(id))
+
+# converts 'weight' from character to numeric
+data$weight <- unfactor(data$weight)
+
+# converts unit of 'age' from days to years
+data$age <- round(data$age / 365, digits = 0)
+
+# creates 'BMI' column from corresponding 'height' and 'weight'
+data$BMI <- (data$weight / ((data$height * 0.01) ^ 2))
+#round BMI
+data$BMI <- round(data$BMI, digits = 1)
+
+# changes column names to readable format
+colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
+head(data)
+```
+
+# Exploratory Analysis
+
+
+# Managing Data
+
+```{r}
+# removes observation for which 'Systole' or 'Diastole' has negative values
+data <- subset(data, Systole > 0 & Diastole > 0)
+
+# removes 'ap_hi' and 'ap_lo' outliers
+iqr_multiplier = 3
+ap_hi_upper_threshold <- quantile(data$Systole, .75) + iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
+ap_hi_lower_threshold <- quantile(data$Systole, .25) - iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
+ap_lo_upper_threshold <- quantile(data$Diastole, .75) + iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
+ap_lo_lower_threshold <- quantile(data$Diastole, .25) - iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
+data <- subset(data, Systole < ap_hi_upper_threshold & Systole > ap_hi_lower_threshold & Diastole < ap_lo_upper_threshold & Diastole > ap_lo_lower_threshold)
+
+# removes 'weight' outliers
+weight_iqr_multiplier = 1.5
+weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
+weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
+data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
+
+# summerizes newly encoded dataset
+summary(data)
+```
+
+# Modeling Data
+
+## change blood pressure into three levels:
+
+```{r}
+###    lower than normal:-1, normal:0, higher than normal: 1
+data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
+```
+
+## multiple linear regression on factors of target
+```{r}
+library(dplyr)
+sample1= sample_n(data,1000)
+mlr =lm(data = sample1,Target~Age+Gender+BMI+Cholesterol+Glucose+Smoking+Alcohol+Active+BloodPressure)
+summary(mlr)
+```
+
+## factor selection according to parsimony principle
+```{r}
+###find collinearity among factors
+library(GGally)
+ggpairs(data = sample1,c(1:2,7:11,13,14))
+```
+abvious collinearity: glucose~cholesterol (0.518), Smoking~Gender(0.32), Alcohol~Gender(0.206), Alcohol~Smoking(0.346) , BloodPressure~BMI (0.215)
+
+### also remove the following factors one by one whose t value is lower than 1.5 (and even the absolute values of standard errors are all larger than Estimate!) and thus significance is really low:
+### alcohol, smoking, gender
+```{r}
+
+mlr2 =lm(data = sample1,Target~Age+BMI+Cholesterol+Glucose+Active+BloodPressure)
+summary(mlr2)
+```
+
+## After trying removing collineared factors BloodPressure or BMI which resulted in less adjusted R-squared, we could tentatively conlude that the following factors remain influencial:
+
+## Age + BMI + Glucose + Active + BloodPressure
+
+_____________________
+
