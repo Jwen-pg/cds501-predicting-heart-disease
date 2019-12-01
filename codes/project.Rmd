@@ -254,7 +254,7 @@ ggplot(data) + geom_bar(aes(x = Cholesterol, fill = Target), position = 'dodge',
 
 # saves plot
 png(file="../figures/cholesterol_dist.png", width=600, height=350)
-ggplot(data) + geom_bar(aes(x = Gender, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Cholesterol Distribution") + xlab("Cholesterol") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+ggplot(data) + geom_bar(aes(x = Cholesterol, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Cholesterol Distribution") + xlab("Cholesterol") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
 
@@ -276,7 +276,7 @@ ggplot(data) + geom_bar(aes(x = BloodPressure, fill = Target), position = 'dodge
 
 # saves plot
 png(file="../figures/BloodPressure_dist.png", width=600, height=350)
-ggplot(data) + geom_bar(aes(x = Glucose, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("BloodPressure Distribution") + xlab("BloodPressure") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+ggplot(data) + geom_bar(aes(x = BloodPressure, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("BloodPressure Distribution") + xlab("BloodPressure") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
 # Feature Selection
