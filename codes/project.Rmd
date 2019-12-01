@@ -88,7 +88,66 @@ unlist(sapply(data, class))
 
 # summerizes dataset
 summary(data)
+sum_data <- summary(data)
 ```
+```{r}
+ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/class_dist_outlier_removed.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+# Managing Data
+
+```{r}
+# removes observation for which 'Systole' or 'Diastole' has negative values
+data <- subset(data, Systole > 0 & Diastole > 0)
+
+# removes 'ap_hi' and 'ap_lo' outliers
+iqr_multiplier = 3
+ap_hi_upper_threshold <- quantile(data$Systole, .75) + iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
+ap_hi_lower_threshold <- quantile(data$Systole, .25) - iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
+ap_lo_upper_threshold <- quantile(data$Diastole, .75) + iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
+ap_lo_lower_threshold <- quantile(data$Diastole, .25) - iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
+data <- subset(data, Systole < ap_hi_upper_threshold & Systole > ap_hi_lower_threshold & Diastole < ap_lo_upper_threshold & Diastole > ap_lo_lower_threshold)
+
+# removes 'height' outliers'
+height_iqr_multiplier = 1.5
+height_upper_threshold <- quantile(data$Height, .75) + height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
+height_lower_threshold <- quantile(data$Height, .25) - height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
+data <- subset(data, Height > height_lower_threshold & Height < height_upper_threshold)
+
+# removes 'weight' outliers'
+weight_iqr_multiplier = 1.5
+weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
+weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
+data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
+
+
+# creates 'BMI' column from corresponding 'height' and 'weight'
+#data$BMI <- (data$Weight / ((data$Height * 0.01) ^ 2))
+
+
+# changes column names to readable format
+#colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
+
+# Managing Data
+
+## change blood pressure into three levels:
+
+### lower than normal:-1, normal:0, higher than normal: 1
+#data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
+#colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI","BloodPressure")
+
+
+
+# summerizes newly encoded dataset
+summary(data)
+sum_data2 <- summary(data)
+```
+
+
 
 ## Age Distribution
 
@@ -188,55 +247,38 @@ png(file="../figures/gender_dist.png", width=600, height=350)
 ggplot(data) + geom_bar(aes(x = Gender, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Gender Distribution") + xlab("Gender") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
-
-# Managing Data
+## Cholesterol Distribution
 
 ```{r}
-# removes observation for which 'Systole' or 'Diastole' has negative values
-data <- subset(data, Systole > 0 & Diastole > 0)
+ggplot(data) + geom_bar(aes(x = Cholesterol, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle(" Cholesterol Distribution") + xlab(" Cholesterol") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 
-# removes 'ap_hi' and 'ap_lo' outliers
-iqr_multiplier = 3
-ap_hi_upper_threshold <- quantile(data$Systole, .75) + iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
-ap_hi_lower_threshold <- quantile(data$Systole, .25) - iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
-ap_lo_upper_threshold <- quantile(data$Diastole, .75) + iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
-ap_lo_lower_threshold <- quantile(data$Diastole, .25) - iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
-data <- subset(data, Systole < ap_hi_upper_threshold & Systole > ap_hi_lower_threshold & Diastole < ap_lo_upper_threshold & Diastole > ap_lo_lower_threshold)
-
-# removes 'height' outliers'
-height_iqr_multiplier = 1.5
-height_upper_threshold <- quantile(data$Height, .75) + height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
-height_lower_threshold <- quantile(data$Height, .25) - height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
-data <- subset(data, Height > height_lower_threshold & Height < height_upper_threshold)
-
-# removes 'weight' outliers'
-weight_iqr_multiplier = 1.5
-weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
-weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
-data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
-
-
-# creates 'BMI' column from corresponding 'height' and 'weight'
-data$BMI <- (data$Weight / ((data$Height * 0.01) ^ 2))
-
-
-# changes column names to readable format
-#colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
-
-# Managing Data
-
-## change blood pressure into three levels:
-
-### lower than normal:-1, normal:0, higher than normal: 1
-data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
-colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI","BloodPressure")
-
-
-
-# summerizes newly encoded dataset
-summary(data)
+# saves plot
+png(file="../figures/cholesterol_dist.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Gender, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Cholesterol Distribution") + xlab("Cholesterol") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
 ```
 
+## Glucose Distribution
+
+```{r}
+ggplot(data) + geom_bar(aes(x = Glucose, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Glucose Distribution") + xlab("Glucose") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/glucose_dist.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Glucose, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Glucose Distribution") + xlab("Glucose") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
+
+## BloodPressure Distribution
+
+```{r}
+ggplot(data) + geom_bar(aes(x = BloodPressure, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("BloodPressure Distribution") + xlab("BloodPressure") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/BloodPressure_dist.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Glucose, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("BloodPressure Distribution") + xlab("BloodPressure") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+```
 # Feature Selection
 
 ## Checking Near Zero Variance Attributes
