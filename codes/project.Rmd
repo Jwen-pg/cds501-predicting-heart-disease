@@ -90,11 +90,52 @@ unlist(sapply(data, class))
 summary(data)
 sum_data <- summary(data)
 ```
+
+```{r}
+p1 <- ggplot(data = data, aes(x=Target,y=Weight)) + 
+           geom_point(aes(color=Weight), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+
+plot(p1)
+```
+
+```{r}
+p2 <- ggplot(data = data, aes(x=Target,y=Height)) + 
+           geom_point(aes(color=Height), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+
+plot(p2)
+```
+
+```{r}
+p3 <- ggplot(data = data, aes(x=Target,y=Systole)) + 
+           geom_point(aes(color=Systole), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+
+plot(p3)
+```
+
+```{r}
+p4 <- ggplot(data = data, aes(x=Target,y=Diastole)) + 
+           geom_point(aes(color=Diastole), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+
+plot(p4)
+```
+
+```{r}
+p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
+           geom_point(aes(color=BMI), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+
+plot(p5)
+```
+
 ```{r}
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 
 # saves plot
-png(file="../figures/class_dist_outlier_removed.png", width=600, height=350)
+png(file="../figures/class_dist.png", width=600, height=350)
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
@@ -147,7 +188,13 @@ summary(data)
 sum_data2 <- summary(data)
 ```
 
+```{r}
+p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
+           geom_point(aes(color=BMI), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
 
+plot(p5)
+```
 
 ## Age Distribution
 
@@ -199,7 +246,7 @@ dev.off()
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 
 # saves plot
-png(file="../figures/class_dist.png", width=600, height=350)
+png(file="../figures/class_dist_outlier_removed.png", width=600, height=350)
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
