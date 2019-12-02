@@ -11,6 +11,7 @@ library(corrplot)
 library(e1071)
 library(ggplot2)
 library(knitr)
+library(klaR)
 library(randomForest)
 library(rattle)
 library(RColorBrewer)
@@ -83,121 +84,6 @@ unlist(sapply(data, class))
 
 # summerizes dataset
 summary(data)
-```
-
-## Boxplot of Weight Attribute
-
-```{r}
-png(file="../figures/box_weight_eda.png", width=600, height=350)
-p1 <- ggplot(data = data, aes(x=Target,y=Weight)) + 
-           geom_point(aes(color=Weight), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-dev.off()
-
-plot(p1)
-```
-
-## Boxplot of Height Attribute
-
-```{r}
-png(file="../figures/box_height_eda.png", width=600, height=350)
-p2 <- ggplot(data = data, aes(x=Target,y=Height)) + 
-           geom_point(aes(color=Height), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-dev.off()
-
-plot(p2)
-```
-
-## Boxplot of Systolic Blood Pressure
-
-```{r}
-png(file="../figures/box_systole_eda.png", width=600, height=350)
-p3 <- ggplot(data = data, aes(x=Target,y=Systole)) + 
-           geom_point(aes(color=Systole), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-dev.off()
-
-plot(p3)
-```
-
-## Boxplot of Diastolic Blood Pressure
-
-```{r}
-png(file="../figures/box_diastole_eda.png", width=600, height=350)
-p4 <- ggplot(data = data, aes(x=Target,y=Diastole)) + 
-           geom_point(aes(color=Diastole), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-dev.off()
-
-plot(p4)
-```
-
-## Boxplot of BMI
-
-```{r}
-png(file="../figures/box_bmi_eda.png", width=600, height=350)
-p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
-           geom_point(aes(color=BMI), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-dev.off()
-
-plot(p5)
-```
-
-## Class Distribution
-
-```{r}
-ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
-
-# saves plot
-png(file="../figures/class_dist_eda.png", width=600, height=350)
-ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
-dev.off()
-```
-
-# Managing Data
-
-```{r}
-# removes observation for which 'Systole' or 'Diastole' has negative values
-data <- subset(data, Systole > 0 & Diastole > 0)
-
-# removes 'ap_hi' and 'ap_lo' outliers
-iqr_multiplier = 3
-ap_hi_upper_threshold <- quantile(data$Systole, .75) + iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
-ap_hi_lower_threshold <- quantile(data$Systole, .25) - iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
-ap_lo_upper_threshold <- quantile(data$Diastole, .75) + iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
-ap_lo_lower_threshold <- quantile(data$Diastole, .25) - iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
-data <- subset(data, Systole < ap_hi_upper_threshold & Systole > ap_hi_lower_threshold & Diastole < ap_lo_upper_threshold & Diastole > ap_lo_lower_threshold)
-
-# removes 'height' outliers'
-height_iqr_multiplier = 1.5
-height_upper_threshold <- quantile(data$Height, .75) + height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
-height_lower_threshold <- quantile(data$Height, .25) - height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
-data <- subset(data, Height > height_lower_threshold & Height < height_upper_threshold)
-
-# removes 'weight' outliers'
-weight_iqr_multiplier = 1.5
-weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
-weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
-data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
-
-# summerizes newly encoded dataset
-summary(data)
-```
-
-# Feature Selection
-
-## Boxplot of BMI
-
-```{r}
-png(file="../figures/box_bmi.png", width=600, height=350)
-p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
-           geom_point(aes(color=BMI), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-dev.off()
-
-plot(p5)
 ```
 
 ## Age Distribution
@@ -298,6 +184,7 @@ png(file="../figures/gender_dist.png", width=600, height=350)
 ggplot(data) + geom_bar(aes(x = Gender, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("Gender Distribution") + xlab("Gender") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
+
 ## Cholesterol Distribution
 
 ```{r}
@@ -331,6 +218,111 @@ ggplot(data) + geom_bar(aes(x = BloodPressure, fill = Target), position = 'dodge
 dev.off()
 ```
 
+# Managing Data
+
+```{r}
+# removes observation for which 'Systole' or 'Diastole' has negative values
+data <- subset(data, Systole > 0 & Diastole > 0)
+
+# removes 'ap_hi' and 'ap_lo' outliers
+iqr_multiplier = 3
+ap_hi_upper_threshold <- quantile(data$Systole, .75) + iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
+ap_hi_lower_threshold <- quantile(data$Systole, .25) - iqr_multiplier * (quantile(data$Systole, .75) - quantile(data$Systole, .25))
+ap_lo_upper_threshold <- quantile(data$Diastole, .75) + iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
+ap_lo_lower_threshold <- quantile(data$Diastole, .25) - iqr_multiplier * (quantile(data$Diastole, .75) - quantile(data$Diastole, .25))
+data <- subset(data, Systole < ap_hi_upper_threshold & Systole > ap_hi_lower_threshold & Diastole < ap_lo_upper_threshold & Diastole > ap_lo_lower_threshold)
+
+# removes 'height' outliers'
+height_iqr_multiplier = 1.5
+height_upper_threshold <- quantile(data$Height, .75) + height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
+height_lower_threshold <- quantile(data$Height, .25) - height_iqr_multiplier * (quantile(data$Height, .75) - quantile(data$Height, .25))
+data <- subset(data, Height > height_lower_threshold & Height < height_upper_threshold)
+
+# removes 'weight' outliers'
+weight_iqr_multiplier = 1.5
+weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
+weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
+data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
+
+data$Age = scale(data$Age)
+data$Height = scale(data$Height)
+data$Weight = scale(data$Weight)
+data$BMI = scale(data$BMI)
+data$Systole = scale(data$Systole)
+data$Diastole = scale(data$Diastole)
+
+# summerizes newly encoded dataset
+summary(data)
+```
+
+# Feature Selection
+
+## Boxplot of Age Attribute
+
+```{r}
+png(file="../figures/box_age.png", width=600, height=350)
+p1 <- ggplot(data = data, aes(x=Target,y=Weight)) + 
+           geom_point(aes(color=Weight), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+plot(p1)
+dev.off()
+```
+
+## Boxplot of Weight Attribute
+
+```{r}
+png(file="../figures/box_weight.png", width=600, height=350)
+p1 <- ggplot(data = data, aes(x=Target,y=Weight)) + 
+           geom_point(aes(color=Weight), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+plot(p1)
+dev.off()
+```
+
+## Boxplot of Height Attribute
+
+```{r}
+png(file="../figures/box_height.png", width=600, height=350)
+p2 <- ggplot(data = data, aes(x=Target,y=Height)) + 
+           geom_point(aes(color=Height), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+plot(p2)
+dev.off()
+```
+
+## Boxplot of Systolic Blood Pressure
+
+```{r}
+png(file="../figures/box_systole.png", width=600, height=350)
+p3 <- ggplot(data = data, aes(x=Target,y=Systole)) + 
+           geom_point(aes(color=Systole), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+plot(p3)
+dev.off()
+```
+
+## Boxplot of Diastolic Blood Pressure
+
+```{r}
+png(file="../figures/box_diastole.png", width=600, height=350)
+p4 <- ggplot(data = data, aes(x=Target,y=Diastole)) + 
+           geom_point(aes(color=Diastole), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+plot(p4)
+dev.off()
+```
+
+## Boxplot of BMI
+
+```{r}
+png(file="../figures/box_bmi.png", width=600, height=350)
+p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
+           geom_point(aes(color=BMI), alpha=0.2) +
+           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+plot(p5)
+dev.off()
+```
+
 ## Checking Near Zero Variance Attributes
 
 Sometimes features may only have a single unique value. For many models, this may cause the model to crash or the fit to be unstable. Similarly, features may have only a few unique values that occur with very low frequencies. The concern here that these predictors may become zero-variance predictors when the data are split into cross-validation/bootstrap sub-samples or that a few samples may have an undue influence on the model. These “near-zero-variance” predictors may need to be identified and eliminated prior to modeling. However, no features had near zero variance.
@@ -359,25 +351,6 @@ ld <- findLinearCombos(data[, numeric_features])
 ld
 ```
 
-## Recursive Feature Elemination
-
-```{r}
-# subsets data for better performance
-set.seed(19941021)
-smpl_split <- initial_split(data, prop = 0.15, strata = "Target")
-smpl_data <- training(smpl_split)
-
-subsets <- c(5)
-ctrl <- rfeControl(functions = rfFuncs, method = "cv", number = 5, verbose = FALSE)
-rfProfile <- rfe(smpl_data[, which(colnames(smpl_data) != "Target")], smpl_data$Target, sizes = subsets, rfeControl = ctrl)
-
-rfProfile
-```
-
-```{r}
-top_features <- c("Systole", "Cholesterol", "Age", "Diastole", "Weight")
-```
-
 # Splitting Data
 
 ```{r}
@@ -396,21 +369,101 @@ cat("Testing Set:")
 prop.table(table(testing_set$Target)) * 100
 ```
 
+# Modelling
+
+## Single Variable Model
+Single variable prediction using "Systole" attribute alone yields around 71.11% accuracy. This is the null model which our models have to beat. 
+
+```{r}
+tree_fit <- rpart(Target ~  ., data = training_set, control = rpart.control(maxdepth = 1), xval = 5)
+tree_predictions <- predict(tree_fit, testing_set, type = "class")
+confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
+```
+
+
+## Naive Bayes
+
+### Recursive Feature Selection
+
+```{r}
+# subsets data for better performance
+set.seed(19941021)
+smpl_split <- initial_split(data, prop = 0.15, strata = "Target")
+smpl_data <- training(smpl_split)
+
+subsets <- c(5, 7, 13)
+ctrl <- rfeControl(functions = nbFuncs, method = "cv", number = 5, verbose = FALSE)
+rfProfile <- rfe(smpl_data[, which(colnames(smpl_data) != "Target")], smpl_data$Target, sizes = subsets, rfeControl = ctrl)
+
+rfProfile
+```
+
+```{r}
+print(predictors(rfProfile))
+plot(rfProfile, type = c("g", "o"))
+```
+
+### Model
+
+```{r}
+nb_ctrl <- trainControl(method = "repeatedcv", number = 5, repeats=5, verbose = FALSE)
+nb_model = naiveBayes(Target ~ Systole + BloodPressure + Diastole + Age + BMI + Weight + Cholesterol + Active, data = training_set, trControl = nb_ctrl)
+```
+
 ## Logistic Regression
 
 ```{r}
-lr <- train(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = training_set, method = "LogitBoost", family = "binomial")
-predictions <- predict(lr, testing_set)
-confusionMatrix(as.factor(predictions), testing_set[["Target"]], positive="Positive")
+lr_ctrl <- trainControl(method = "repeatedcv", number = 5, repeats=5, verbose = FALSE)
+lr <- train(Target ~ Systole + BloodPressure + Diastole + Age + BMI + Weight + Cholesterol + Active, data = training_set, method = "LogitBoost", family = "binomial", trConrol = lr_ctrl)
 ```
+
+## SVM
+
+```{r}
+svm_ctrl <- trainControl(method = "repeatedcv", number = 5, repeats=5,verbose = FALSE)
+svm <- train(Target ~ Systole + BloodPressure + Diastole + Age + BMI + Weight + Cholesterol + Active, data = training_set, method = "svmLinear3", trConrol = lr_ctrl)
+```
+
+# Evaluation
 
 ## Naive Bayes
 
 ```{r}
-nb_model = naiveBayes(Target ~ Systole + Cholesterol + Age + Diastole + Weight, data = training_set)
 nb_predictions <- predict(nb_model, testing_set)
 confusionMatrix(as.factor(nb_predictions), testing_set[["Target"]], positive="Positive")
 ```
+
+## Logistic Regression
+
+```{r}
+predictions <- predict(lr, testing_set)
+confusionMatrix(as.factor(predictions), testing_set[["Target"]], positive="Positive")
+```
+
+## SVM
+
+```{r}
+svm_predictions <- predict(svm, testing_set)
+confusionMatrix(as.factor(svm_predictions), testing_set[["Target"]], positive="Positive")
+```
+####################################END###########################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Decision Tree
 
