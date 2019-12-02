@@ -136,7 +136,7 @@ dev.off()
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 
 # saves plot
-png(file="../figures/class_dist_outlier_removed.png", width=600, height=350)
+png(file="../figures/class_dist.png", width=600, height=350)
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
@@ -253,6 +253,17 @@ data$Diastole = scale(data$Diastole)
 
 # summerizes newly encoded dataset
 summary(data)
+```
+## Class Distribution after removing outlier
+
+```{r}
+ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+
+# saves plot
+png(file="../figures/class_dist_removed_outlier.png", width=600, height=350)
+ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+dev.off()
+
 ```
 
 # Feature Selection
@@ -468,7 +479,7 @@ confusionMatrix(as.factor(svm_predictions), testing_set[["Target"]], positive="P
 ## Decision Tree
 
 ```{r}
-tree_fit <- rpart(Target ~  Systole + Cholesterol + Age + Diastole + Weight, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
+tree_fit <- rpart(Target ~  Systole + Cholesterol + Age + Diastole + Weight + BMI + BloodPressure + Active, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
 fancyRpartPlot(tree_fit)
 tree_predictions <- predict(tree_fit, testing_set, type = "class")
 confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
