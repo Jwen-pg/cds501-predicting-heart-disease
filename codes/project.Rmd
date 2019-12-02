@@ -83,8 +83,9 @@ unlist(sapply(data, class))
 
 # summerizes dataset
 summary(data)
-sum_data <- summary(data)
 ```
+
+## Boxplot of Weight Attribute
 
 ```{r}
 p1 <- ggplot(data = data, aes(x=Target,y=Weight)) + 
@@ -94,6 +95,8 @@ p1 <- ggplot(data = data, aes(x=Target,y=Weight)) +
 plot(p1)
 ```
 
+## Boxplot of Height Attribute
+
 ```{r}
 p2 <- ggplot(data = data, aes(x=Target,y=Height)) + 
            geom_point(aes(color=Height), alpha=0.2) +
@@ -101,6 +104,8 @@ p2 <- ggplot(data = data, aes(x=Target,y=Height)) +
 
 plot(p2)
 ```
+
+## Boxplot of Systolic Blood Pressure
 
 ```{r}
 p3 <- ggplot(data = data, aes(x=Target,y=Systole)) + 
@@ -110,6 +115,8 @@ p3 <- ggplot(data = data, aes(x=Target,y=Systole)) +
 plot(p3)
 ```
 
+## Boxplot of Diastolic Blood Pressure
+
 ```{r}
 p4 <- ggplot(data = data, aes(x=Target,y=Diastole)) + 
            geom_point(aes(color=Diastole), alpha=0.2) +
@@ -117,6 +124,8 @@ p4 <- ggplot(data = data, aes(x=Target,y=Diastole)) +
 
 plot(p4)
 ```
+
+## Boxplot of BMI
 
 ```{r}
 p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
@@ -126,6 +135,8 @@ p5 <- ggplot(data = data, aes(x=Target,y=BMI)) +
 plot(p5)
 ```
 
+## Class Distribution
+
 ```{r}
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 
@@ -134,6 +145,7 @@ png(file="../figures/class_dist.png", width=600, height=350)
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
+
 # Managing Data
 
 ```{r}
@@ -160,27 +172,8 @@ weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (
 weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
 data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
 
-
-# creates 'BMI' column from corresponding 'height' and 'weight'
-#data$BMI <- (data$Weight / ((data$Height * 0.01) ^ 2))
-
-
-# changes column names to readable format
-#colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
-
-# Managing Data
-
-## change blood pressure into three levels:
-
-### lower than normal:-1, normal:0, higher than normal: 1
-#data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
-#colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI","BloodPressure")
-
-
-
 # summerizes newly encoded dataset
 summary(data)
-sum_data2 <- summary(data)
 ```
 
 ```{r}
