@@ -64,14 +64,9 @@ data$BMI <- (data$weight / ((data$height * 0.01) ^ 2))
 # changes column names to readable format
 colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI")
 
-# Managing Data
-
-## change blood pressure into three levels:
-
-### lower than normal:-1, normal:0, higher than normal: 1
-data$BloodPressure =ifelse((data$Systole>=140 | data$Diastole>=90),1,ifelse((data$Systole<=90 | data$Diastole<=60),-1,0))
-colnames(data) <- c("Age", "Gender", "Height", "Weight", "Systole", "Diastole", "Cholesterol", "Glucose", "Smoking", "Alcohol", "Active", "Target", "BMI","BloodPressure")
-
+# change blood pressure into three levels: Low, Normal, High
+data$BloodPressure = ifelse((data$Systole >= 140 | data$Diastole >= 90), "High", ifelse((data$Systole <= 90 | data$Diastole <= 60), "Low", "Normal"))
+data$BloodPressure <- as.factor(data$BloodPressure)
 
 head(data)
 ```
