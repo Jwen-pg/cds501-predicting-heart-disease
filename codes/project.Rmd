@@ -88,9 +88,11 @@ summary(data)
 ## Boxplot of Weight Attribute
 
 ```{r}
+png(file="../figures/box_weight_eda.png", width=600, height=350)
 p1 <- ggplot(data = data, aes(x=Target,y=Weight)) + 
            geom_point(aes(color=Weight), alpha=0.2) +
            geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+dev.off()
 
 plot(p1)
 ```
@@ -98,9 +100,11 @@ plot(p1)
 ## Boxplot of Height Attribute
 
 ```{r}
+png(file="../figures/box_height_eda.png", width=600, height=350)
 p2 <- ggplot(data = data, aes(x=Target,y=Height)) + 
            geom_point(aes(color=Height), alpha=0.2) +
            geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+dev.off()
 
 plot(p2)
 ```
@@ -108,9 +112,11 @@ plot(p2)
 ## Boxplot of Systolic Blood Pressure
 
 ```{r}
+png(file="../figures/box_systole_eda.png", width=600, height=350)
 p3 <- ggplot(data = data, aes(x=Target,y=Systole)) + 
            geom_point(aes(color=Systole), alpha=0.2) +
            geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+dev.off()
 
 plot(p3)
 ```
@@ -118,9 +124,11 @@ plot(p3)
 ## Boxplot of Diastolic Blood Pressure
 
 ```{r}
+png(file="../figures/box_diastole_eda.png", width=600, height=350)
 p4 <- ggplot(data = data, aes(x=Target,y=Diastole)) + 
            geom_point(aes(color=Diastole), alpha=0.2) +
            geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+dev.off()
 
 plot(p4)
 ```
@@ -128,9 +136,11 @@ plot(p4)
 ## Boxplot of BMI
 
 ```{r}
+png(file="../figures/box_bmi_eda.png", width=600, height=350)
 p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
            geom_point(aes(color=BMI), alpha=0.2) +
            geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+dev.off()
 
 plot(p5)
 ```
@@ -141,7 +151,7 @@ plot(p5)
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 
 # saves plot
-png(file="../figures/class_dist.png", width=600, height=350)
+png(file="../figures/class_dist_eda.png", width=600, height=350)
 ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
@@ -176,10 +186,16 @@ data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_thr
 summary(data)
 ```
 
+# Feature Selection
+
+## Boxplot of BMI
+
 ```{r}
+png(file="../figures/box_bmi.png", width=600, height=350)
 p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
            geom_point(aes(color=BMI), alpha=0.2) +
            geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+dev.off()
 
 plot(p5)
 ```
@@ -314,9 +330,9 @@ png(file="../figures/BloodPressure_dist.png", width=600, height=350)
 ggplot(data) + geom_bar(aes(x = BloodPressure, fill = Target), position = 'dodge', alpha=0.8) + theme_bw() + ggtitle("BloodPressure Distribution") + xlab("BloodPressure") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
 dev.off()
 ```
-# Feature Selection
 
 ## Checking Near Zero Variance Attributes
+
 Sometimes features may only have a single unique value. For many models, this may cause the model to crash or the fit to be unstable. Similarly, features may have only a few unique values that occur with very low frequencies. The concern here that these predictors may become zero-variance predictors when the data are split into cross-validation/bootstrap sub-samples or that a few samples may have an undue influence on the model. These “near-zero-variance” predictors may need to be identified and eliminated prior to modeling. However, no features had near zero variance.
 
 ```{r}
@@ -325,15 +341,14 @@ nzv
 ```
 
 ## Checking Strongly Correlated Features
-Some models might show imporoved performance if the level of correlation between the predictors is reduced. However, no features were strongly correlated.
+
+Some models might show imporoved performance if the level of correlation between the predictors is reduced. Only BMI was found to have a strong correlation with Weight, which is obvious.
 
 ```{r}
 numeric_features <- c("Age", "Height", "Weight", "Systole", "Diastole", "BMI")
 # creates a correlation matrix
 cr <- cor(data[, numeric_features])
-# finds the number of strongly correlated features
-sr <- findCorrelation(cr, cutoff = 0.75)
-sr
+cr
 ```
 
 ## Checking Linearly Dependent Features
@@ -354,7 +369,6 @@ smpl_data <- training(smpl_split)
 
 subsets <- c(5)
 ctrl <- rfeControl(functions = rfFuncs, method = "cv", number = 5, verbose = FALSE)
-
 rfProfile <- rfe(smpl_data[, which(colnames(smpl_data) != "Target")], smpl_data$Target, sizes = subsets, rfeControl = ctrl)
 
 rfProfile
