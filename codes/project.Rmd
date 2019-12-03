@@ -254,6 +254,7 @@ data$Diastole = scale(data$Diastole)
 # summerizes newly encoded dataset
 summary(data)
 ```
+
 ## Class Distribution after removing outlier
 
 ```{r}
@@ -391,6 +392,21 @@ tree_predictions <- predict(tree_fit, testing_set, type = "class")
 confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
 ```
 
+## KNN for Bayes Rate Selection
+
+```{r}
+preProcValues <- preProcess(x = training_set, method = c("center", "scale"))
+set.seed(400)
+ctrl <- trainControl(method = "repeatedcv", repeats = 3)
+knnFit <- train(Target ~ ., data = training_set, method = "knn", trControl = ctrl, preProcess = c("center","scale"), tuneLength = 20)
+
+knnFit
+```
+
+```{r}
+knn_pred <- predict(knnFit, testing_set)
+confusionMatrix(as.factor(knn_pred), testing_set[["Target"]], positive="Positive")
+```
 
 ## Naive Bayes
 
@@ -432,7 +448,7 @@ lr <- train(Target ~ Systole + BloodPressure + Diastole + Age + BMI + Weight + C
 
 ```{r}
 svm_ctrl <- trainControl(method = "repeatedcv", number = 5, repeats=5,verbose = FALSE)
-svm <- train(Target ~ Systole + BloodPressure + Diastole + Age + BMI + Weight + Cholesterol + Active, data = training_set, method = "svmLinear3", trConrol = lr_ctrl)
+svm <- train(Target ~ ., data = data, method = "svmLinear3", trConrol = lr_ctrl)
 ```
 
 # Evaluation
