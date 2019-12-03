@@ -10,6 +10,7 @@ library(caret)
 library(corrplot)
 library(e1071)
 library(ggplot2)
+library(GGally)
 library(knitr)
 library(klaR)
 library(kernlab)
@@ -274,6 +275,7 @@ summary(training_set)
 ## Decision Tree to Select Top Features
 
 ```{r}
+set.seed(19941021)
 tree_fit <- rpart(Target ~  ., data = training_set, control = rpart.control(maxdepth = 1), xval = 5)
 tree_predictions <- predict(tree_fit, testing_set, type = "class")
 confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
@@ -300,65 +302,64 @@ plot(rfProfile, type = c("g", "o"))
 ## Boxplot of Age Attribute
 
 ```{r}
-png(file="../box_age.png", width=600, height=350)
-ggplot(data = data, aes(x=Target,y=Weight)) + geom_jitter(color="black", size=0.1, alpha=0.2) + geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
+png(file="../figures/box_age_jitter.png", width=600, height=350)
+ggplot(data = training_set, aes(x =Target, y = Age, fill = Target)) + geom_jitter(color = "black", size=0.1, alpha = 0.2) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
+dev.off()
+png(file="../figures/box_age.png", width=600, height=350)
+ggplot(data = training_set, aes(x = Target, y = Age, fill = Target)) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
 dev.off()
 ```
 
 ## Boxplot of Weight Attribute
 
 ```{r}
-png(file="../figures/box_weight.png", width=600, height=350)
-p1 <- ggplot(data = data, aes(x=Target,y=Weight)) + 
-           geom_point(aes(color=Weight), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-plot(p1)
+png(file="../figures/box_weight_jitter.png", width=600, height=350)
+ggplot(data = training_set, aes(x =Target, y = Weight, fill = Target)) + geom_jitter(color = "black", size=0.1, alpha = 0.2) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
 dev.off()
-```
-
-## Boxplot of Height Attribute
-
-```{r}
-png(file="../figures/box_height.png", width=600, height=350)
-p2 <- ggplot(data = data, aes(x=Target,y=Height)) + 
-           geom_point(aes(color=Height), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-plot(p2)
+png(file="../figures/box_weight.png", width=600, height=350)
+ggplot(data = training_set, aes(x = Target, y = Weight, fill = Target)) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
 dev.off()
 ```
 
 ## Boxplot of Systolic Blood Pressure
 
 ```{r}
+png(file="../figures/box_systole_jitter.png", width=600, height=350)
+ggplot(data = training_set, aes(x =Target, y = Systole, fill = Target)) + geom_jitter(color = "black", size=0.1, alpha = 0.2) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
+dev.off()
 png(file="../figures/box_systole.png", width=600, height=350)
-p3 <- ggplot(data = data, aes(x=Target,y=Systole)) + 
-           geom_point(aes(color=Systole), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-plot(p3)
+ggplot(data = training_set, aes(x = Target, y = Systole, fill = Target)) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
 dev.off()
 ```
 
 ## Boxplot of Diastolic Blood Pressure
 
 ```{r}
+png(file="../figures/box_diastole_jitter.png", width=600, height=350)
+ggplot(data = training_set, aes(x =Target, y = Diastole, fill = Target)) + geom_jitter(color = "black", size=0.1, alpha = 0.2) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
+dev.off()
 png(file="../figures/box_diastole.png", width=600, height=350)
-p4 <- ggplot(data = data, aes(x=Target,y=Diastole)) + 
-           geom_point(aes(color=Diastole), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-plot(p4)
+ggplot(data = training_set, aes(x = Target, y = Diastole, fill = Target)) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
 dev.off()
 ```
 
 ## Boxplot of BMI
 
 ```{r}
+png(file="../figures/box_bmi_jitter.png", width=600, height=350)
+ggplot(data = training_set, aes(x =Target, y = BMI, fill = Target)) + geom_jitter(color = "black", size=0.1, alpha = 0.2) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
+dev.off()
 png(file="../figures/box_bmi.png", width=600, height=350)
-p5 <- ggplot(data = data, aes(x=Target,y=BMI)) + 
-           geom_point(aes(color=BMI), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-plot(p5)
+ggplot(data = training_set, aes(x = Target, y = BMI, fill = Target)) + geom_boxplot(outlier.size = 4, outlier.colour = 'blue', alpha = 0.1) + theme_bw()
 dev.off()
 ```
+
+## Pairplots
+
+```{r}
+
+```
+
 
 ## Checking Near Zero Variance Attributes
 
