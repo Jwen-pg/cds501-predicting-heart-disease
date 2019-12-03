@@ -1,5 +1,5 @@
 ---
-title: "CDS505 Project"
+title: "CDS501 Project"
 output: pdf_document
 ---
 
@@ -12,6 +12,7 @@ library(e1071)
 library(ggplot2)
 library(knitr)
 library(klaR)
+library(kernlab)
 library(randomForest)
 library(rattle)
 library(RColorBrewer)
@@ -243,40 +244,64 @@ weight_iqr_multiplier = 1.5
 weight_upper_threshold <- quantile(data$Weight, .75) + weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
 weight_lower_threshold <- quantile(data$Weight, .25) - weight_iqr_multiplier * (quantile(data$Weight, .75) - quantile(data$Weight, .25))
 data <- subset(data, Weight > weight_lower_threshold & Weight < weight_upper_threshold)
-
-data$Age = scale(data$Age)
-data$Height = scale(data$Height)
-data$Weight = scale(data$Weight)
-data$BMI = scale(data$BMI)
-data$Systole = scale(data$Systole)
-data$Diastole = scale(data$Diastole)
-
-# summerizes newly encoded dataset
-summary(data)
 ```
 
-## Class Distribution after removing outlier
+# Splitting Data
 
 ```{r}
-ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
+# train/test split 
+set.seed(1994)
 
-# saves plot
-png(file="../figures/class_dist_removed_outlier.png", width=600, height=350)
-ggplot(data) + geom_bar(aes(x = Target, fill = Target), alpha=0.8) + theme_bw() + ggtitle("Class Distribution") + xlab("Target") + ylab("Count") + scale_fill_manual(values=c("#15158a", "#eb4034"))
-dev.off()
+# splits into train and test data
+split <- initial_split(data, prop = 0.80, strata = "Target")
+training_set <- training(split)
+testing_set <- testing(split)
 
+# checks class distribution after the split
+cat("Training Set:")
+prop.table(table(training_set$Target)) * 100
+cat("Testing Set:")
+prop.table(table(testing_set$Target)) * 100
 ```
 
 # Feature Selection
 
+```{r}
+# summerizes newly encoded dataset
+summary(training_set)
+```
+
+## Decision Tree to Select Top Features
+
+```{r}
+tree_fit <- rpart(Target ~  ., data = training_set, control = rpart.control(maxdepth = 1), xval = 5)
+tree_predictions <- predict(tree_fit, testing_set, type = "class")
+confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
+print(tree_fit$variable.importance)
+```
+
+## Recursive Feature Selection
+
+```{r}
+# subsets data for better performance
+set.seed(19941021)
+smpl_split <- initial_split(data, prop = 0.15, strata = "Target")
+smpl_data <- training(smpl_split)
+
+subsets <- c(5, 7, 13)
+ctrl <- rfeControl(functions = nbFuncs, method = "cv", number = 5, verbose = FALSE)
+rfProfile <- rfe(smpl_data[, which(colnames(smpl_data) != "Target")], smpl_data$Target, sizes = subsets, rfeControl = ctrl)
+
+rfProfile
+print(predictors(rfProfile))
+plot(rfProfile, type = c("g", "o"))
+```
+
 ## Boxplot of Age Attribute
 
 ```{r}
-png(file="../figures/box_age.png", width=600, height=350)
-p1 <- ggplot(data = data, aes(x=Target,y=Weight)) + 
-           geom_point(aes(color=Weight), alpha=0.2) +
-           geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
-plot(p1)
+png(file="../box_age.png", width=600, height=350)
+ggplot(data = data, aes(x=Target,y=Weight)) + geom_jitter(color="black", size=0.1, alpha=0.2) + geom_boxplot(outlier.size=4, outlier.colour='blue', alpha=0.1)
 dev.off()
 ```
 
@@ -340,7 +365,7 @@ dev.off()
 Sometimes features may only have a single unique value. For many models, this may cause the model to crash or the fit to be unstable. Similarly, features may have only a few unique values that occur with very low frequencies. The concern here that these predictors may become zero-variance predictors when the data are split into cross-validation/bootstrap sub-samples or that a few samples may have an undue influence on the model. These “near-zero-variance” predictors may need to be identified and eliminated prior to modeling. However, no features had near zero variance.
 
 ```{r}
-nzv <- nearZeroVar(data, saveMetrics= TRUE)
+nzv <- nearZeroVar(training_set, saveMetrics= TRUE)
 nzv
 ```
 
@@ -351,7 +376,7 @@ Some models might show imporoved performance if the level of correlation between
 ```{r}
 numeric_features <- c("Age", "Height", "Weight", "Systole", "Diastole", "BMI")
 # creates a correlation matrix
-cr <- cor(data[, numeric_features])
+cr <- cor(training_set[, numeric_features])
 cr
 ```
 
@@ -359,26 +384,8 @@ cr
 No features were found to be linearly dependent among each other.
 
 ```{r}
-ld <- findLinearCombos(data[, numeric_features])
+ld <- findLinearCombos(training_set[, numeric_features])
 ld
-```
-
-# Splitting Data
-
-```{r}
-# train/test split 
-set.seed(1994)
-
-# splits into train and test data
-split <- initial_split(data, prop = 0.80, strata = "Target")
-training_set <- training(split)
-testing_set <- testing(split)
-
-# checks class distribution after the split
-cat("Training Set:")
-prop.table(table(training_set$Target)) * 100
-cat("Testing Set:")
-prop.table(table(testing_set$Target)) * 100
 ```
 
 # Modelling
@@ -390,65 +397,40 @@ Single variable prediction using "Systole" attribute alone yields around 71.11% 
 tree_fit <- rpart(Target ~  ., data = training_set, control = rpart.control(maxdepth = 1), xval = 5)
 tree_predictions <- predict(tree_fit, testing_set, type = "class")
 confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
+print(tree_fit$variable.importance)
 ```
 
 ## KNN for Bayes Rate Selection
 
 ```{r}
-preProcValues <- preProcess(x = training_set, method = c("center", "scale"))
-set.seed(400)
-ctrl <- trainControl(method = "repeatedcv", repeats = 3)
+preProcValues <- preProcess(x = dmy_test, method = c("center", "scale"))
+
+set.seed(27101996)
+ctrl <- trainControl(method = "cv", number = 5)
 knnFit <- train(Target ~ ., data = training_set, method = "knn", trControl = ctrl, preProcess = c("center","scale"), tuneLength = 20)
-
-knnFit
-```
-
-```{r}
 knn_pred <- predict(knnFit, testing_set)
 confusionMatrix(as.factor(knn_pred), testing_set[["Target"]], positive="Positive")
 ```
 
 ## Naive Bayes
 
-### Recursive Feature Selection
-
-```{r}
-# subsets data for better performance
-set.seed(19941021)
-smpl_split <- initial_split(data, prop = 0.15, strata = "Target")
-smpl_data <- training(smpl_split)
-
-subsets <- c(5, 7, 13)
-ctrl <- rfeControl(functions = nbFuncs, method = "cv", number = 5, verbose = FALSE)
-rfProfile <- rfe(smpl_data[, which(colnames(smpl_data) != "Target")], smpl_data$Target, sizes = subsets, rfeControl = ctrl)
-
-rfProfile
-```
-
-```{r}
-print(predictors(rfProfile))
-plot(rfProfile, type = c("g", "o"))
-```
-
-### Model
-
 ```{r}
 nb_ctrl <- trainControl(method = "repeatedcv", number = 5, repeats=5, verbose = FALSE)
-nb_model = naiveBayes(Target ~ Systole + BloodPressure + Diastole + Age + BMI + Weight + Cholesterol + Active, data = training_set, trControl = nb_ctrl)
+nb_model = naiveBayes(Target ~ ., data = dmy, trControl = nb_ctrl)
 ```
 
 ## Logistic Regression
 
 ```{r}
 lr_ctrl <- trainControl(method = "repeatedcv", number = 5, repeats=5, verbose = FALSE)
-lr <- train(Target ~ Systole + BloodPressure + Diastole + Age + BMI + Weight + Cholesterol + Active, data = training_set, method = "LogitBoost", family = "binomial", trConrol = lr_ctrl)
+lr <- train(Target ~ ., data = dmy, method = "LogitBoost", family = "binomial", trConrol = lr_ctrl)
 ```
 
 ## SVM
 
 ```{r}
 svm_ctrl <- trainControl(method = "repeatedcv", number = 5, repeats=5,verbose = FALSE)
-svm <- train(Target ~ ., data = data, method = "svmLinear3", trConrol = lr_ctrl)
+svm <- train(Target ~ ., data = dmy, method = "svmRadial", trConrol = lr_ctrl)
 ```
 
 # Evaluation
@@ -456,15 +438,15 @@ svm <- train(Target ~ ., data = data, method = "svmLinear3", trConrol = lr_ctrl)
 ## Naive Bayes
 
 ```{r}
-nb_predictions <- predict(nb_model, testing_set)
-confusionMatrix(as.factor(nb_predictions), testing_set[["Target"]], positive="Positive")
+nb_predictions <- predict(nb_model, dmy_trsf)
+confusionMatrix(as.factor(nb_predictions), dmy_trsf[["Target"]], positive="Positive")
 ```
 
 ## Logistic Regression
 
 ```{r}
-predictions <- predict(lr, testing_set)
-confusionMatrix(as.factor(predictions), testing_set[["Target"]], positive="Positive")
+predictions <- predict(lr, dmy_trsf)
+confusionMatrix(as.factor(predictions), dmy_trsf[["Target"]], positive="Positive")
 ```
 
 ## SVM
@@ -473,214 +455,3 @@ confusionMatrix(as.factor(predictions), testing_set[["Target"]], positive="Posit
 svm_predictions <- predict(svm, testing_set)
 confusionMatrix(as.factor(svm_predictions), testing_set[["Target"]], positive="Positive")
 ```
-####################################END###########################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Decision Tree
-
-```{r}
-tree_fit <- rpart(Target ~  Systole + Cholesterol + Age + Diastole + Weight + BMI + BloodPressure + Active, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit)
-tree_predictions <- predict(tree_fit, testing_set, type = "class")
-confusionMatrix(as.factor(tree_predictions), testing_set[["Target"]], positive="Positive")
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-tree_fit2 <- rpart(Target ~  Age + BMI + Glucose + Active + BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit2)
-```
-```{r}
-tree_fit3 <- rpart(Target ~ ., data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit3)
-```
-
-```{r}
-tree_fit4 <- rpart(Target ~ Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Active+BMI+BloodPressure, data = training_set, control = rpart.control(minsplit = 1000), xval = 5)
-fancyRpartPlot(tree_fit4)
-```
-
-```{r}
-#nb_model = naiveBayes(Target ~ ., data = training_set)
-nb_model = naiveBayes(Target ~ Glucose + Smoking + Active + Alcohol, data = training_set)
-
-nb_model2 = naiveBayes(Target ~ Age + BMI + Glucose + Active + BloodPressure, data = training_set)
-
-nb_model3 = naiveBayes(Target ~ ., data = training_set)
-
-nb_model4 = naiveBayes(Target ~Age+Gender+Cholesterol+Glucose+Smoking+Alcohol+Active+BMI+BloodPressure, data = training_set)
-```
-
-## Decision Tree
-
-```{r}
-predict <-  predict(tree_fit, testing_set, method = "class", type = "class")
-dt_prediction <- table(Actual = testing_set$Target, Predicted = predict)
-print(dt_prediction)
-
-tree_precision <- posPredValue(as.factor(predict), testing_set[["Target"]], positive="Positive")
-tree_recall <- sensitivity(predict, testing_set[["Target"]] , positive="Positive")
-tree_accuracy <- sum(diag(dt_prediction))/sum(dt_prediction)
-
-cat("\n")
-cat("Decision Tree \n")
-cat("Accuracy: ",tree_accuracy * 100, "%\n")
-cat("Precision: ", tree_precision * 100 , "%\n")
-cat("Recall: ", tree_recall * 100, "%\n")
-cat("F1: ", (2 * tree_precision * tree_recall)/(tree_precision + tree_recall), "\n")
-```
-
-```{r}
-predict2 <-  predict(tree_fit2, testing_set, method = "class", type = "class")
-dt_prediction2 <- table(Actual = testing_set$Target, Predicted = predict2)
-print(dt_prediction2)
-
-tree_precision2 <- posPredValue(as.factor(predict2), testing_set[["Target"]], positive="Positive")
-tree_recall2 <- sensitivity(predict2, testing_set[["Target"]] , positive="Positive")
-tree_accuracy2 <- sum(diag(dt_prediction2))/sum(dt_prediction2)
-
-cat("\n")
-cat("Decision Tree\n")
-cat("Accuracy: ",tree_accuracy2 * 100, "%\n")
-cat("Precision: ", tree_precision2 * 100 , "%\n")
-cat("Recall: ", tree_recall2 * 100, "%\n")
-cat("F1: ", (2 * tree_precision2 * tree_recall2)/(tree_precision2 + tree_recall2), "\n")
-
-```
-
-```{r}
-predict3 <-  predict(tree_fit3, testing_set, method = "class", type = "class")
-dt_prediction3 <- table(Actual = testing_set$Target, Predicted = predict3)
-print(dt_prediction3)
-
-tree_precision3 <- posPredValue(as.factor(predict3), testing_set[["Target"]], positive="Positive")
-tree_recall3 <- sensitivity(predict3, testing_set[["Target"]] , positive="Positive")
-tree_accuracy3 <- sum(diag(dt_prediction3))/sum(dt_prediction3)
-
-cat("\n")
-cat("Decision Tree\n")
-cat("Accuracy: ",tree_accuracy3 * 100, "%\n")
-cat("Precision: ", tree_precision3 * 100 , "%\n")
-cat("Recall: ", tree_recall3 * 100, "%\n")
-cat("F1: ", (2 * tree_precision3 * tree_recall3)/(tree_precision3 + tree_recall3), "\n")
-
-```
-
-```{r}
-predict4 <-  predict(tree_fit4, testing_set, method = "class", type = "class")
-dt_prediction4 <- table(Actual = testing_set$Target, Predicted = predict4)
-print(dt_prediction4)
-
-tree_precision4 <- posPredValue(as.factor(predict4), testing_set[["Target"]], positive="Positive")
-tree_recall4 <- sensitivity(predict4, testing_set[["Target"]] , positive="Positive")
-tree_accuracy4 <- sum(diag(dt_prediction4))/sum(dt_prediction4)
-
-cat("\n")
-cat("Decision Tree\n")
-cat("Accuracy: ",tree_accuracy4 * 100, "%\n")
-cat("Precision: ", tree_precision4 * 100 , "%\n")
-cat("Recall: ", tree_recall4 * 100, "%\n")
-cat("F1: ", (2 * tree_precision4 * tree_recall4)/(tree_precision4 + tree_recall4), "\n")
-```
-```{r}
-predicted_nb <-  predict(nb_model, testing_set, method = "class", type = "class")
-nb_prediction <- table(Actual = testing_set$Target, Predicted = predicted_nb)
-print(nb_prediction)
-
-nb_precision <- posPredValue(as.factor(predicted_nb), testing_set[["Target"]], positive="Positive")
-nb_recall <- sensitivity(predicted_nb, testing_set[["Target"]] , positive="Positive")
-nb_accuracy <- sum(diag(nb_prediction))/sum(nb_prediction)
-  
-cat("\n")
-cat("Naive Bayes\n")
-cat("Accuracy: ",nb_accuracy * 100, "%\n")
-cat("Precision: ", nb_precision * 100 , "%\n")
-cat("Recall: ", nb_recall * 100, "%\n")
-cat("F1: ", (2 * nb_precision * nb_recall)/(nb_precision + nb_recall), "\n")
-```
-```{r}
-predicted_nb2 <-  predict(nb_model2, testing_set, method = "class", type = "class")
-nb_prediction2 <- table(Actual = testing_set$Target, Predicted = predicted_nb2)
-print(nb_prediction2)
-
-nb_precision2 <- posPredValue(as.factor(predicted_nb2), testing_set[["Target"]], positive="Positive")
-nb_recall2 <- sensitivity(predicted_nb2, testing_set[["Target"]] , positive="Positive")
-nb_accuracy2 <- sum(diag(nb_prediction2))/sum(nb_prediction2)
-  
-cat("\n")
-cat("Naive Bayes\n")
-cat("Accuracy: ",nb_accuracy2 * 100, "%\n")
-cat("Precision: ", nb_precision2 * 100 , "%\n")
-cat("Recall: ", nb_recall2 * 100, "%\n")
-cat("F1: ", (2 * nb_precision2 * nb_recall2)/(nb_precision2 + nb_recall2), "\n")
-```
-```{r}
-predicted_nb3 <-  predict(nb_model3, testing_set, method = "class", type = "class")
-nb_prediction3 <- table(Actual = testing_set$Target, Predicted = predicted_nb3)
-print(nb_prediction3)
-
-nb_precision3 <- posPredValue(as.factor(predicted_nb3), testing_set[["Target"]], positive="Positive")
-nb_recall3 <- sensitivity(predicted_nb3, testing_set[["Target"]] , positive="Positive")
-nb_accuracy3 <- sum(diag(nb_prediction3))/sum(nb_prediction3)
-  
-cat("\n")
-cat("Naive Bayes\n")
-cat("Accuracy: ",nb_accuracy3 * 100, "%\n")
-cat("Precision: ", nb_precision3 * 100 , "%\n")
-cat("Recall: ", nb_recall3 * 100, "%\n")
-cat("F1: ", (2 * nb_precision3 * nb_recall3)/(nb_precision3 + nb_recall3), "\n")
-```
-
-```{r}
-predicted_nb4 <-  predict(nb_model4, testing_set, method = "class", type = "class")
-nb_prediction4 <- table(Actual = testing_set$Target, Predicted = predicted_nb4)
-print(nb_prediction4)
-
-nb_precision4 <- posPredValue(as.factor(predicted_nb4), testing_set[["Target"]], positive="Positive")
-nb_recall4 <- sensitivity(predicted_nb4, testing_set[["Target"]] , positive="Positive")
-nb_accuracy4 <- sum(diag(nb_prediction4))/sum(nb_prediction4)
-  
-cat("\n")
-cat("Naive Bayes\n")
-cat("Accuracy: ",nb_accuracy4 * 100, "%\n")
-cat("Precision: ", nb_precision4 * 100 , "%\n")
-cat("Recall: ", nb_recall4 * 100, "%\n")
-cat("F1: ", (2 * nb_precision4 * nb_recall4)/(nb_precision4 + nb_recall4), "\n")
-```
-
-
-
-
-
-
